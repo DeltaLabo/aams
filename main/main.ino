@@ -1,11 +1,18 @@
 //Codigo para leer sensores
 //
-int CO_pin = A5;
+//Para Arduino
+/*int CO_pin = A5;
 int NO_pin = A4;
 int SO_pin = A3;
 int CO_aux_pin = A0;
 int NO_aux_pin = A1;
-int SO_aux_pin = A2;
+int SO_aux_pin = A2;*/
+
+//Para ESP32
+int CO_pin = 34;
+int NO_pin = 35;
+int SO_pin = 36;
+
 int ledPin = 13;      // select the pin for the LED
 float CO_value = 0;  // variable to store the value coming from the sensor
 float NO_value = 0;  // 
