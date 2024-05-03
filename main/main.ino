@@ -118,7 +118,7 @@ void setup()
     while (1);
   }
   // adjust time in RTC module to now everytime
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 
   // initialize SPI for SD card on custom pins
   sdSPI.begin(PIN_SCK, PIN_MISO, PIN_MOSI, PIN_CS); // SCK, MISO, MOSI, SS
@@ -241,16 +241,23 @@ void loop()
 
       // if WiFi fails, use SD card
       CollectData();
-      DataLogSD();
-      segundos = 0;
-      CO_value = 0;
-      NO_value = 0;
-      SO_value = 0;
-      tempC = 0;
-      humi = 0;
-      PM1 = 0;
-      PM2 = 0;
-      PM10 = 0;
+      if (segundos <= 60){
+        segundos = segundos + 1;
+        Serial.print("Segundos SD: ");
+        Serial.println(segundos);
+      }
+      else{
+        DataLogSD();
+        segundos = 0;
+        CO_value = 0;
+        NO_value = 0;
+        SO_value = 0;
+        tempC = 0;
+        humi = 0;
+        PM1 = 0;
+        PM2 = 0;
+        PM10 = 0;
+      }
     }
     Serial.println("\nConnected.");
   } 
@@ -600,18 +607,18 @@ void DataLogSD(){
 
     // CO sensor data
     myFile.print("CO concentration: ");
-    myFile.print(CO_value/(segundos+1));
+    myFile.print(CO_value);
     myFile.println(" ppb");
     //myFile.print(", "); //Delimiter between data
 
     // NO2 sensor data
     myFile.print("NO2 concentration: ");
-    myFile.print(NO_value/(segundos+1));
+    myFile.print(NO_value);
     myFile.println(" ppb");
 
     // SO2 sensor data
     myFile.print("SO2 concentration: ");
-    myFile.print(SO_value/(segundos+1));
+    myFile.print(SO_value);
     myFile.println(" ppb");
 
     // temperature sensor data
