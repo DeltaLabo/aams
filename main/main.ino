@@ -3,6 +3,9 @@
 #include "ThingSpeak.h"
 #include <DHT.h>
 #include <SPI.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include "time.h"
 
 //Libraries for OPC
 #define ArduinoUNO
@@ -24,12 +27,21 @@
 #include <RTClib.h>
 #include <Wire.h>
 
-const char* ssid = "LaboratorioDelta";   // your network SSID (name) 
-const char* pass = "labdelta21!";        // your network password
-//const char* ssid = "HONOR JOSEPH";   // your network SSID (name) 
-//const char* pass = "123456789";        // your network password
+//Libraries for INA219
+#include "Adafruit_Sensor.h"
+#include "Adafruit_INA219.h"
+
+//const char* ssid = "LaboratorioDelta";   // your network SSID (name)
+//const char* pass = "labdelta21!";        // your network password
+const char* ssid = "SensorAire";   // your network SSID (name)
+const char* pass = "Biblio8385";        // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 WiFiClient  client;
+
+// NTP server
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = -21600;  // GMT -6
+const int   daylightOffset_sec = 0;
 
 unsigned long myChannelNumber = 2363549;
 const char * myWriteAPIKey = "NR8GHTJF3IC27CIP";
@@ -44,10 +56,13 @@ float tempC = 0;
 // define custom SPI pins
 #define PIN_MISO 45 //DO
 #define PIN_MOSI 46 //DI
-#define PIN_SCK 47
+#define PIN_SCK 47 //CLK
 #define PIN_CS 26  // chip select pin for SD card
 
+// global variables
+Adafruit_INA219 ina219;
 RTC_DS3231 rtc;
+DateTime lastSyncTime;
 SdFat SD;
 SdFile myFile;
 char filename[13]; // Buffer for filename with room for null terminator
@@ -70,6 +85,10 @@ float PM10 = 0;
 //Counter to update values on Things Speak
 int segundos = 0;
 
+// variables for INA219
+float busvoltage = 0;
+float current_mA = 0;
+
 unsigned long currentTime;
 unsigned long cloopTime;
 unsigned char SPI_in[68], SPI_in_index, ssPin_OPC;
@@ -87,6 +106,8 @@ void setup()
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);   
   ThingSpeak.begin(client);
+  WiFi.begin(ssid, pass);
+  delay(500);
   dht.begin(); // initialize the DHT22 sensor
   Wire.begin(41,42); // initialize I2C for RTC (GPIO41 for SDA and GPIO42 for SCL)
 
@@ -117,8 +138,14 @@ void setup()
     Serial.println(F("Couldn't find RTC"));
     while (1);
   }
-  // adjust time in RTC module to now everytime
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
+  // Synchronize time
+  syncTime();
+
+  if(WiFi.status() != WL_CONNECTED){
+    rtc.adjust(DateTime(__DATE__, __TIME__));
+    Serial.println("RTC Compilation Time");
+  }
 
   // initialize SPI for SD card on custom pins
   sdSPI.begin(PIN_SCK, PIN_MISO, PIN_MOSI, PIN_CS); // SCK, MISO, MOSI, SS
@@ -131,6 +158,18 @@ void setup()
     Serial.println(F("SD CARD INITIALIZED."));
     Serial.println(F("--------------------"));    
   }
+}
+
+void syncTime() {
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  rtc.adjust(DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec));
+  lastSyncTime = rtc.now();
+  Serial.println("RTC set from NTP time");
 }
 
 void updateFilename(char* filename, const DateTime& dt) {
@@ -170,9 +209,9 @@ void CollectData(){
   }
   
   // diaplay sensor values
-  CO_value = CO_value + gasSensor(CO_pin,280,430);
-  NO_value = NO_value + gasSensor(NO_pin,205,400);
-  SO_value = SO_value + gasSensor(SO_pin,345,520);
+  CO_value = CO_value + gasSensor(CO_pin,285,420);
+  NO_value = NO_value + gasSensor(NO_pin,250,800);
+  SO_value = SO_value + gasSensor(SO_pin,350,500);
   delay(1000);
   Serial.print("CO concentration: ");
   Serial.print(CO_value/(segundos+1));
@@ -184,6 +223,18 @@ void CollectData(){
   Serial.print(SO_value/(segundos+1));
   Serial.println(" ppb");
 
+  // bus Voltage data
+  busvoltage = ina219.getBusVoltage_V();
+  Serial.print("[DATA]: Bus Voltage: ");
+  Serial.print(busvoltage);
+  Serial.println(" V");
+
+  // current data
+  current_mA = ina219.getCurrent_mA();
+  Serial.print("[DATA]: Current: ");
+  Serial.print(current_mA);
+  Serial.println(" mA");
+
   ssPin_OPC = 33;
   unsigned long GetHistTime = millis(); //Set initial GetHistTime
   ReadOPChist(); //Read OPC histogram data
@@ -193,26 +244,24 @@ void CollectData(){
   //display PMs
   PM1 = mydata.PM[0];
   Serial.print("PM1: ");
-  //Serial.print(mydata.PM[0]);
   Serial.print(PM1);    
-  Serial.println("ug/m^3");
+  Serial.println(" ug/m^3");
   
   PM2 = mydata.PM[1];
   Serial.print("PM2.5: ");
-  //Serial.print(mydata.PM[1]);
   Serial.print(PM2);
-  Serial.println("ug/m^3");
+  Serial.println(" ug/m^3");
   
   PM10 = mydata.PM[2];
   Serial.print("PM10: ");
-  //Serial.print(mydata.PM[2]);
   Serial.print(PM10);
-  Serial.println("ug/m^3");
+  Serial.println(" ug/m^3");
   
   delay(10000);
 
   if (segundos <= 30){
   segundos = segundos + 1;
+  Serial.println(segundos);
   }
   else{
   WriteDataIoT();
@@ -220,20 +269,28 @@ void CollectData(){
   CO_value = 0;
   NO_value = 0;
   SO_value = 0;
+  busvoltage = 0;
+  current_mA = 0;
   tempC = 0;
   humi = 0;
   PM1 = 0;
   PM2 = 0;
   PM10 = 0;
   }
+  return;
 }
 
 // Main Loop
 void loop()
 {
+  DateTime now = rtc.now();
+  // Check if a day has passed to resync
+  if (now.unixtime() - lastSyncTime.unixtime() > 86400) { // 86400 seconds in a day
+    syncTime();
+  }
   // Connect or reconnect to WiFi
   if(WiFi.status() != WL_CONNECTED){
-    Serial.print("Could not connect to:");
+    Serial.print("Could not connect to: ");
     Serial.println(ssid);
     while(WiFi.status() != WL_CONNECTED){
       WiFi.begin(ssid, pass);
@@ -241,19 +298,30 @@ void loop()
 
       // if WiFi fails, use SD card
       CollectData();
-      DataLogSD();
-      segundos = 0;
-      CO_value = 0;
-      NO_value = 0;
-      SO_value = 0;
-      tempC = 0;
-      humi = 0;
-      PM1 = 0;
-      PM2 = 0;
-      PM10 = 0;
+      if (segundos <= 30){
+        segundos = segundos + 1;
+        Serial.print("Segundos SD: ");
+        Serial.println(segundos);
+      }
+      else{
+        DataLogSD();
+        segundos = 0;
+        CO_value = 0;
+        NO_value = 0;
+        SO_value = 0;
+        busvoltage = 0;
+        current_mA = 0;
+        tempC = 0;
+        humi = 0;
+        PM1 = 0;
+        PM2 = 0;
+        PM10 = 0;
+      }
     }
-    Serial.println("\nConnected.");
-  } 
+    Serial.print("\nConnected to: ");
+    Serial.println(ssid);
+    syncTime();
+  }
   else{
     CollectData();
   }
@@ -264,7 +332,7 @@ float gasSensor(int pin, int offset, int sens) {
   // float value = (analogRead(pin)*2560.0)/1023.0;
   float valor = (analogRead(pin)*5000.0)/4095.0;
   //Serial.println(analogRead(pin));
-  //Serial.println("Voltaje del pin: " + String(pin) + " Es de: " + String(valor));
+  //Serial.println("Voltaje del pin: " + String(pin) + " Es de: " + String(voltaje));
   valor -= offset; //substract offset
   valor /= sens; //apply sensitivity
   valor *= 1000; //convert to ppb
@@ -276,8 +344,10 @@ void WriteDataIoT() {
   ThingSpeak.setField(1, (CO_value/(segundos+1)));
   ThingSpeak.setField(2, (NO_value/(segundos+1)));
   ThingSpeak.setField(3, (SO_value/(segundos+1)));
-  ThingSpeak.setField(4, (tempC));
-  ThingSpeak.setField(5, (humi));
+  ThingSpeak.setField(4, (busvoltage));
+  ThingSpeak.setField(5, (current_mA));
+  //ThingSpeak.setField(4, (tempC));
+  //ThingSpeak.setField(5, (humi));
   ThingSpeak.setField(6, (PM1));
   ThingSpeak.setField(7, (PM2));
   ThingSpeak.setField(8, (PM10));
@@ -392,7 +462,7 @@ void GetReadyResponse (unsigned char SPIcommand)
       {
         //End SPI and wait a few seconds for it to be cleared
         SetSSpin(HIGH);
-        Serial.println(F("ERROR Resetting SPI")); //signal user
+        Serial.println(F("ERROR Resetting SPI. Check custom SPI pins!")); //signal user
         Serial.flush();
         SPI.endTransaction();
         //Wait 6s here for buffer to be cleared
@@ -563,6 +633,7 @@ void AddDelimiter (Stream &port)
   port.print(F(",")); //delimiter
 }
 
+
 void SetSSpin (bool pinState) //pinState is HIGH or LOW
 {
   digitalWrite(ssPin_OPC, pinState); //Set output to pinState
@@ -584,7 +655,7 @@ void DataLogSD(){
     // write timestamp
     myFile.print(now.year(), DEC);
     myFile.print('-');
-    myFile.print(now.month(), DEC);
+    myFile.print(now.month(), DEC);+
     myFile.print('-');
     myFile.print(now.day(), DEC);
     myFile.print(' ');
@@ -598,44 +669,53 @@ void DataLogSD(){
     // write data
     myFile.println();
 
+    //Titulo
+    myFile.println("CO concentration, NO2 concentration, SO2 concentration, Voltage, Current, Temperature, Humidity, PM1, PM2.5, PM10 ");
+
     // CO sensor data
-    myFile.print("CO concentration: ");
-    myFile.print(CO_value/(segundos+1));
-    myFile.println(" ppb");
-    //myFile.print(", "); //Delimiter between data
+    myFile.print(CO_value);
+    myFile.print(", ");
 
     // NO2 sensor data
-    myFile.print("NO2 concentration: ");
-    myFile.print(NO_value/(segundos+1));
-    myFile.println(" ppb");
+    //myFile.print("NO2 concentration: ");
+    myFile.print(NO_value);
+    myFile.print(", ");
 
     // SO2 sensor data
-    myFile.print("SO2 concentration: ");
-    myFile.print(SO_value/(segundos+1));
-    myFile.println(" ppb");
+    //myFile.print("SO2 concentration: ");
+    myFile.print(SO_value);
+    myFile.print(", ");
+
+    // bus voltage data
+    myFile.print(busvoltage);
+    myFile.print(", ");
+
+    // current data
+    myFile.print(current_mA);
+    myFile.print(", ");
 
     // temperature sensor data
-    myFile.print("Temperature: ");
+    //myFile.print("Temperature: ");
     myFile.print(tempC);
-    myFile.println("°C");
+    myFile.print(", ");
 
     // humidity sensor data
-    myFile.print("Humidity: ");
+    //myFile.print("Humidity: ");
     myFile.print(humi);
-    myFile.println("%");
+    myFile.print(", ");
 
     // OPC PM data
-    myFile.print("PM1: ");
+    //myFile.print("PM1: ");
     myFile.print(PM1);      
-    myFile.println("ug/m^3");
+    myFile.print(", ");
 
-    myFile.print("PM2.5: ");
+    //myFile.print("PM2.5: ");
     myFile.print(PM2);      
-    myFile.println("ug/m^3");
+    myFile.print(", ");
 
-    myFile.print("PM10: ");
-    myFile.print(PM10);
-    myFile.println("ug/m^3");
+    //myFile.print("PM10: ");
+    myFile.println(PM10);
+    //myFile.println(" ug/m^3");
 
     myFile.println();  // New line
 
