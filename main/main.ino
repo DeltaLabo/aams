@@ -347,8 +347,8 @@ void WriteDataIoT() {
   ThingSpeak.setField(4, (busvoltage));
   ThingSpeak.setField(5, (current_mA));
   //ThingSpeak.setField(4, (tempC));
-  //ThingSpeak.setField(5, (humi));
-  ThingSpeak.setField(6, (PM1));
+  ThingSpeak.setField(6, (humi));
+  //ThingSpeak.setField(6, (PM1));
   ThingSpeak.setField(7, (PM2));
   ThingSpeak.setField(8, (PM10));
   
@@ -670,20 +670,20 @@ void DataLogSD(){
     myFile.println();
 
     //Titulo
-    myFile.println("CO concentration, NO2 concentration, SO2 concentration, Voltage, Current, Temperature, Humidity, PM1, PM2.5, PM10 ");
+    myFile.println("CO (ppb),  NO2 (ppb),  SO2 (ppb),  Voltage (V), Current (mA), Temperature (°C), Humidity (%), PM1 (ug/m^3), PM2.5 (ug/m^3), PM10 (ug/m^3)");
 
     // CO sensor data
-    myFile.print(CO_value);
+    myFile.print(CO_value/(segundos+1));
     myFile.print(", ");
 
     // NO2 sensor data
     //myFile.print("NO2 concentration: ");
-    myFile.print(NO_value);
+    myFile.print(NO_value/(segundos+1));
     myFile.print(", ");
 
     // SO2 sensor data
     //myFile.print("SO2 concentration: ");
-    myFile.print(SO_value);
+    myFile.print(SO_value/(segundos+1));
     myFile.print(", ");
 
     // bus voltage data
