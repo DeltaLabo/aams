@@ -139,6 +139,11 @@ void setup()
     while (1);
   }
 
+  // initialize INA219
+  if (!ina219.begin()) {
+    Serial.println("Could not find a valid INA219 sensor, check wiring");
+  }
+
   // Synchronize time
   syncTime();
 
