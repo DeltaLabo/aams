@@ -44,7 +44,7 @@ const long  gmtOffset_sec = -21600;  // GMT -6
 const int   daylightOffset_sec = 0;
 
 unsigned long myChannelNumber = 2363549;
-const char * myWriteAPIKey = "NR8GHTJF3IC27CIP";
+const char* myWriteAPIKey = "NR8GHTJF3IC27CIP";
 
 // define pin for tempertaure and humidity sensor
 #define DHT22_PIN  6
@@ -225,13 +225,13 @@ void CollectData(){
 
   // bus Voltage data
   busvoltage = ina219.getBusVoltage_V();
-  Serial.print("[DATA]: Bus Voltage: ");
+  Serial.print("Bus Voltage: ");
   Serial.print(busvoltage);
   Serial.println(" V");
 
   // current data
   current_mA = ina219.getCurrent_mA();
-  Serial.print("[DATA]: Current: ");
+  Serial.print("Current: ");
   Serial.print(current_mA);
   Serial.println(" mA");
 
