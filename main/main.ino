@@ -31,10 +31,10 @@
 #include "Adafruit_Sensor.h"
 #include "Adafruit_INA219.h"
 
-//const char* ssid = "LaboratorioDelta";   // your network SSID (name)
-//const char* pass = "labdelta21!";        // your network password
-const char* ssid = "SensorAire";   // your network SSID (name)
-const char* pass = "Biblio8385";        // your network password
+const char* ssid = "Nodos Visitas";   // your network SSID (name)
+const char* pass = "uneduned";        // your network password
+//const char* ssid = "SensorAire";   // your network SSID (name)
+//const char* pass = "Biblio8385";        // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 WiFiClient  client;
 
@@ -58,6 +58,12 @@ float tempC = 0;
 #define PIN_MOSI 46 //DI
 #define PIN_SCK 47 //CLK
 #define PIN_CS 26  // chip select pin for SD card
+
+// define custom SPI pins for OPC
+#define PIN_MISO_OPC 35 //DO
+#define PIN_MOSI_OPC 34 //DI
+#define PIN_SCK_OPC 36 //CLK
+#define PIN_CS_OPC 33  // chip select pin for SD card
 
 // global variables
 Adafruit_INA219 ina219;
@@ -124,7 +130,7 @@ void setup()
   opSerial.begin(BaudRate);
 
   // start the SPI library:
-  SPI.begin(); //Enable SPI for OPC comms
+  SPI.begin(PIN_SCK_OPC, PIN_MISO_OPC, PIN_MOSI_OPC, PIN_CS_OPC); //Enable SPI for OPC comms
 
   //Device #1 (ssPin_OPC = 10)
   ssPin_OPC = 33;
@@ -140,8 +146,8 @@ void setup()
   }
 
   // initialize INA219
-  if (!ina219.begin()) {
-    Serial.println("Could not find a valid INA219 sensor, check wiring");
+  if (!ina219.begin()){
+    Serial.println("Could not find INA219");
   }
 
   // Synchronize time
@@ -264,7 +270,7 @@ void CollectData(){
   
   delay(10000);
 
-  if (segundos <= 30){
+  if (segundos <= 10){
   segundos = segundos + 1;
   Serial.println(segundos);
   }
@@ -303,7 +309,7 @@ void loop()
 
       // if WiFi fails, use SD card
       CollectData();
-      if (segundos <= 30){
+      if (segundos <= 10){
         segundos = segundos + 1;
         Serial.print("Segundos SD: ");
         Serial.println(segundos);
