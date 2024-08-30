@@ -72,6 +72,7 @@ DateTime lastSyncTime;
 SdFat SD;
 SdFile myFile;
 char filename[13]; // Buffer for filename with room for null terminator
+int previous_day; // Buffer for filename with room for null terminator
 
 // initialize custom SPI class for SD card
 SPIClass sdSPI(HSPI);
@@ -184,7 +185,7 @@ void syncTime() {
 }
 
 void updateFilename(char* filename, const DateTime& dt) {
-  sprintf(filename, "/%04d%02d%02d.txt", dt.year(), dt.month(), dt.day());
+  sprintf(filename, "/%04d%02d%02d.csv", dt.year(), dt.month(), dt.day());
 }
 
 void InitDevice (void){
@@ -290,7 +291,6 @@ void CollectData(){
   }
   return;
 }
-
 // Main Loop
 void loop()
 {
@@ -663,10 +663,14 @@ void DataLogSD(){
   else{
     Serial.println(F("Writing log to SD Card"));
 
+    //Titulo
+    if (previous_day != now.day()) {
+      myFile.println("timestamp,CO (ppb),NO2 (ppb),SO2 (ppb),Voltage (V),Current (mA),Temperature (°C),Humidity (%),PM1 (ug/m^3),PM2.5 (ug/m^3),PM10 (ug/m^3)");
+    }
     // write timestamp
     myFile.print(now.year(), DEC);
     myFile.print('-');
-    myFile.print(now.month(), DEC);+
+    myFile.print(now.month(), DEC);
     myFile.print('-');
     myFile.print(now.day(), DEC);
     myFile.print(' ');
@@ -675,62 +679,55 @@ void DataLogSD(){
     myFile.print(now.minute(), DEC);
     myFile.print(':');
     myFile.print(now.second(), DEC);
-    myFile.print("  "); // Delimiter between timestamp and data
-
-    // write data
-    myFile.println();
-
-    //Titulo
-    myFile.println("CO (ppb),  NO2 (ppb),  SO2 (ppb),  Voltage (V), Current (mA), Temperature (°C), Humidity (%), PM1 (ug/m^3), PM2.5 (ug/m^3), PM10 (ug/m^3)");
+    myFile.print(","); // Delimiter between timestamp and data
 
     // CO sensor data
     myFile.print(CO_value/(segundos+1));
-    myFile.print(", ");
+    myFile.print(",");
 
     // NO2 sensor data
     //myFile.print("NO2 concentration: ");
     myFile.print(NO_value/(segundos+1));
-    myFile.print(", ");
+    myFile.print(",");
 
     // SO2 sensor data
     //myFile.print("SO2 concentration: ");
     myFile.print(SO_value/(segundos+1));
-    myFile.print(", ");
+    myFile.print(",");
 
     // bus voltage data
     myFile.print(busvoltage);
-    myFile.print(", ");
+    myFile.print(",");
 
     // current data
     myFile.print(current_mA);
-    myFile.print(", ");
+    myFile.print(",");
 
     // temperature sensor data
     //myFile.print("Temperature: ");
     myFile.print(tempC);
-    myFile.print(", ");
+    myFile.print(",");
 
     // humidity sensor data
     //myFile.print("Humidity: ");
     myFile.print(humi);
-    myFile.print(", ");
+    myFile.print(",");
 
     // OPC PM data
     //myFile.print("PM1: ");
     myFile.print(PM1);      
-    myFile.print(", ");
+    myFile.print(",");
 
     //myFile.print("PM2.5: ");
     myFile.print(PM2);      
-    myFile.print(", ");
+    myFile.print(",");
 
     //myFile.print("PM10: ");
     myFile.println(PM10);
     //myFile.println(" ug/m^3");
 
-    myFile.println();  // New line
-
     myFile.close();  // Close the file
     Serial.println("Data appended to file.");
   }
+  previous_day = now.day();
 }
