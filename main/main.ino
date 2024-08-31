@@ -286,29 +286,31 @@ void CollectData(){
 }
 
 // Main Loop
+// Main Loop
 void loop()
 {
   DateTime now = rtc.now();
+
   // Check if a day has passed to resync
   if (now.unixtime() - lastSyncTime.unixtime() > 86400) { // 86400 seconds in a day
     syncTime();
   }
-  // Connect or reconnect to WiFi
-  if(WiFi.status() != WL_CONNECTED){
+
+  // Try to connect or reconnect to WiFi
+  if (WiFi.status() != WL_CONNECTED) {
     Serial.print("Could not connect to: ");
     Serial.println(ssid);
-    while(WiFi.status() != WL_CONNECTED){
+    while (WiFi.status() != WL_CONNECTED) {
       WiFi.begin(ssid, pass);
-      delay (5000);
+      delay(5000);
 
-      // if WiFi fails, use SD card
+      // Collect data and save to SD regardless of WiFi status
       CollectData();
-      if (segundos <= 30){
+      if (segundos <= 30) {
         segundos = segundos + 1;
         Serial.print("Segundos SD: ");
         Serial.println(segundos);
-      }
-      else{
+      } else {
         DataLogSD();
         segundos = 0;
         CO_value = 0;
@@ -327,9 +329,10 @@ void loop()
     Serial.println(ssid);
     syncTime();
   }
-  else{
-    CollectData();
-  }
+
+  // Collect data and save to SD in every loop iteration
+  CollectData();
+  DataLogSD();
 }
 
 
