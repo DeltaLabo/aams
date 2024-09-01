@@ -12,6 +12,17 @@
 //Sensor related definitions
 #define DHT22_PIN  6
 #define DHTTYPE DHT22
+#define CO_pin  7
+#define NO_pin 5
+#define SO_pin 3
+
+//Terminal printing and files related definitions
+#define terminalHeader  "timestamp,voltage (V),current (mA),humidity (%),temperature (°C),CO (ppb),NO2 (ppb),SO2 (ppb),PM1 (ug/m^3),PM2.5 (ug/m^3),PM10 (ug/m^3)"
+#define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10"
+
+// bool printing(sensorDataType data){
+  
+// }
 
 //WiFi related variables
 const char* ssid = "RM_interior";   // your network SSID (name)
@@ -47,12 +58,19 @@ typedef struct sensorDataType {
     float current;
     float humidity;
     float temperature;
+    float CO;
+    float NO;
+    float SO;
+    float PM1;
+    float PM2;
+    float PM10;
 };
 sensorDataType sensorData = {0};
 sensorDataType sensorDataAcumTS = {0};
 sensorDataType sensorDataAvgTS = {0};
 sensorDataType sensorDataAcumSD = {0};
 sensorDataType sensorDataAvgSD = {0};
+
 
 bool tests = false;
 
@@ -88,6 +106,7 @@ void setup()
   if(tests){
     while(true);
   }
+  Serial.println(terminalHeader);
 }
 
 
@@ -112,6 +131,9 @@ void loop()
       sensorData.current = ina219.getCurrent_mA();
       sensorData.humidity = dht.readHumidity();
       sensorData.temperature = dht.readTemperature();
+      sensorData.CO = gasSensor(CO_pin,285,420);
+      sensorData.NO = gasSensor(NO_pin,250,800);
+      sensorData.SO = gasSensor(SO_pin,350,500);
       sensorDataAcumSD = acumulating(sensorData,sensorDataAcumSD);
       sensorDataAcumTS = acumulating(sensorData,sensorDataAcumSD);
     }
@@ -119,8 +141,8 @@ void loop()
     if(intervalEval(SDCardInterval,currEpoch,prevEpochSD,&prevEpochSD)){
       sensorDataAvgSD = averaging(sensorDataAcumSD,SDCardInterval,MeasureInterval);
       sensorDataAcumSD = emptyData();
-      Serial.println(sensorData.voltage);
-      Serial.println(sensorDataAvgSD.voltage);
+      Serial.println(sensorData.CO);
+      Serial.println(sensorDataAvgSD.CO);
     }
     timer_flag = 0;
   }
@@ -172,10 +194,16 @@ sensorDataType averaging(sensorDataType acumulator, int avgInterval, int measInt
   return average;
 }
 
-
-
 sensorDataType emptyData()
 {
   sensorDataType empty = {0};
   return empty;
+}
+
+float gasSensor(int pin, int offset, int sens) {
+  float value = (analogRead(pin)*5000.0)/4096.0;
+  value -= offset; //substract offset
+  value /= sens; //apply sensitivity
+  value *= 1000; //convert to ppb
+  return value;
 }
