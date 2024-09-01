@@ -1,7 +1,17 @@
 #include <WiFi.h>
 #include <ESP32Time.h> //RTC
 #include "Adafruit_INA219.h"
+#include <DHT.h>
+#include <SPI.h>
 
+//Interval definitions in seconds
+#define MeasureInterval     1
+#define ThinkSpeakInterval  60
+#define SDCardInterval      10
+
+//Sensor related definitions
+#define DHT22_PIN  6
+#define DHTTYPE DHT22
 
 //WiFi related variables
 const char* ssid = "RM_interior";   // your network SSID (name)
@@ -27,41 +37,24 @@ unsigned long prevEpochSD = 0;
 
 //INA219 related variables
 Adafruit_INA219 ina219;
-float voltage = 0;
-float current = 0;
+
+//DHT related variables
+DHT dht(DHT22_PIN, DHTTYPE, 22);
 
 //Sensor related variables
-struct sensorDataType {
+typedef struct sensorDataType {
     float voltage;
     float current;
+    float humidity;
+    float temperature;
 };
-sensorDataType sensorData = {0,0};
-sensorDataType sensorDataAcumTS = {0,0};
-sensorDataType sensorDataAvgTS = {0,0};
-sensorDataType sensorDataAcumSD = {0,0};
-sensorDataType sensorDataAvgSD = {0,0};
+sensorDataType sensorData = {0};
+sensorDataType sensorDataAcumTS = {0};
+sensorDataType sensorDataAvgTS = {0};
+sensorDataType sensorDataAcumSD = {0};
+sensorDataType sensorDataAvgSD = {0};
 
-//Interval definitions in seconds
-#define MeasureInterval     2
-#define ThinkSpeakInterval  60
-#define SDCardInterval      60
-
-
-int counter = 0;
-
-
-unsigned long intervalEval(unsigned long interval,unsigned long currE,unsigned long prevE,unsigned long *prevEpointer)
-{
-  if ((currE - prevE) >= interval)
-  {
-    *prevEpointer = currE;
-    return true;
-  }else
-  {
-    return false;
-  }
-}
-
+bool tests = false;
 
 void setup()
 {
@@ -79,9 +72,21 @@ void setup()
   rtc.setTimeStruct(timeinfo);
   prevEpochMeas = rtc.getEpoch();
   prevEpochSD = rtc.getEpoch();
+  //Iterval testing
+  if((SDCardInterval % MeasureInterval) != 0){
+    Serial.println("SD card saving interval is wrong");
+    tests = true;
+  }
+  if((ThinkSpeakInterval % MeasureInterval) != 0){
+    Serial.println("ThinkSpeak saving interval is wrong");
+    tests = true;
+  }
   //INA219 related setup
   if (!ina219.begin()){
     Serial.println("Could not find INA219");
+  }
+  if(tests){
+    while(true);
   }
 }
 
@@ -101,23 +106,21 @@ void loop()
     // Serial.println(&timeinfo, "%Y-%m-d %H:%M:%S");
     // Serial.println(rtc.getTime("%Y-%m-%d %H:%M:%S,"));
     currEpoch = rtc.getEpoch();
-    if(intervalEval(MeasureInterval,currEpoch,prevEpochMeas,&prevEpochMeas))
-    {
+    // Make measurements every "MeasureInterval"
+    if(intervalEval(MeasureInterval,currEpoch,prevEpochMeas,&prevEpochMeas)){
       sensorData.voltage = ina219.getBusVoltage_V();
-      sensorDataAcumSD.voltage += sensorData.voltage;
       sensorData.current = ina219.getCurrent_mA();
-      sensorDataAcumSD.current += sensorData.current;
-      Serial.println(counter++);
+      sensorData.humidity = dht.readHumidity();
+      sensorData.temperature = dht.readTemperature();
+      sensorDataAcumSD = acumulating(sensorData,sensorDataAcumSD);
+      sensorDataAcumTS = acumulating(sensorData,sensorDataAcumSD);
     }
-    if(intervalEval(SDCardInterval,currEpoch,prevEpochSD,&prevEpochSD))
-    {
-      sensorDataAvgSD.voltage = sensorDataAcumSD.voltage / ((SDCardInterval/MeasureInterval) - 1);
-      sensorDataAcumSD.voltage = 0;
-      sensorDataAvgSD.current = sensorDataAcumSD.current / ((SDCardInterval/MeasureInterval) - 1);
-      sensorDataAcumSD.voltage = 0;
-      Serial.println(sensorDataAvgSD.voltage);
+    // Make averaging an pub in the SD card every "SDCardInterval"
+    if(intervalEval(SDCardInterval,currEpoch,prevEpochSD,&prevEpochSD)){
+      sensorDataAvgSD = averaging(sensorDataAcumSD,SDCardInterval,MeasureInterval);
+      sensorDataAcumSD = emptyData();
       Serial.println(sensorData.voltage);
-      counter = 0;
+      Serial.println(sensorDataAvgSD.voltage);
     }
     timer_flag = 0;
   }
@@ -126,7 +129,7 @@ void loop()
 
 void syncTime() {
   configTime(UTCOffset, daylightOffset, ntpServer);
-  if (!getLocalTime(&timeinfo)) {
+  if (!getLocalTime(&timeinfo)){
     Serial.println("Failed to obtain time");
     return;
   }
@@ -136,4 +139,43 @@ void syncTime() {
 //Time interruption handler
 void ARDUINO_ISR_ATTR onTimer() {
   timer_flag = true;
+}
+
+unsigned long intervalEval(unsigned long interval,unsigned long currE,unsigned long prevE,unsigned long *prevEpointer)
+{
+  if ((currE - prevE) >= interval)
+  {
+    *prevEpointer = currE;
+    return true;
+  }else
+  {
+    return false;
+  }
+}
+
+sensorDataType acumulating(sensorDataType measurements, sensorDataType acumulate)
+{
+  acumulate.voltage += measurements.voltage;
+  acumulate.current += measurements.current;
+  acumulate.humidity += measurements.humidity;
+  acumulate.temperature += measurements.temperature;
+  return acumulate;
+}
+
+sensorDataType averaging(sensorDataType acumulator, int avgInterval, int measInterval)
+{
+  sensorDataType average;
+  average.voltage = acumulator.voltage / ( avgInterval / measInterval );
+  average.current = acumulator.current / ( avgInterval / measInterval );
+  average.humidity = acumulator.humidity / ( avgInterval / measInterval );
+  average.temperature = acumulator.temperature / ( avgInterval / measInterval );
+  return average;
+}
+
+
+
+sensorDataType emptyData()
+{
+  sensorDataType empty = {0};
+  return empty;
 }
