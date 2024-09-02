@@ -3,11 +3,15 @@
 #include "Adafruit_INA219.h"
 #include <DHT.h>
 #include <SPI.h>
+#include <SdFat.h>
+//#include <sdios.h>
+#include <SdFatConfig.h>
 
 //Interval definitions in seconds
+#define InternetInterval    10
 #define MeasureInterval     1
 #define ThinkSpeakInterval  60
-#define SDCardInterval      10
+#define SDCardInterval      5
 
 //Sensor related definitions
 #define DHT22_PIN  6
@@ -15,18 +19,25 @@
 #define CO_pin  7
 #define NO_pin 5
 #define SO_pin 3
+#define PIN_MISO_OPC 35
+#define PIN_MOSI_OPC 34
+#define PIN_SCK_OPC 36
+#define PIN_CS_OPC 33
+
+//SD card related definitions
+#define PIN_MISO_SD 45
+#define PIN_MOSI_SD 46
+#define PIN_SCK_SD 47
+#define PIN_CS_SD 26
 
 //Terminal printing and files related definitions
-#define terminalHeader  "timestamp,voltage (V),current (mA),humidity (%),temperature (°C),CO (ppb),NO2 (ppb),SO2 (ppb),PM1 (ug/m^3),PM2.5 (ug/m^3),PM10 (ug/m^3)"
-#define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10"
-
-// bool printing(sensorDataType data){
-  
-// }
+#define terminalHeader  "timestamp,voltage (V),current (mA),humidity (%),temperature (°C),CO (ppb),NO2 (ppb),SO2 (ppb),PM1 (ug/m^3),PM2.5 (ug/m^3),PM10 (ug/m^3),WiFi"
+#define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi"
 
 //WiFi related variables
-const char* ssid = "RM_interior";   // your network SSID (name)
-const char* pass = "RM20JUNE";        // your network password
+const char* ssid = "RM_interior";
+const char* pass = "RM20JUNE";
+bool connected = false;
 
 //Interruption related variables
 hw_timer_t *timer = NULL;
@@ -43,8 +54,10 @@ struct tm timeinfo;
 
 //Data sending related variables
 unsigned long currEpoch = 0; 
+unsigned long prevEpochInter = 0;
 unsigned long prevEpochMeas = 0;
 unsigned long prevEpochSD = 0; 
+unsigned long prevEpochTS = 0; 
 
 //INA219 related variables
 Adafruit_INA219 ina219;
@@ -71,60 +84,99 @@ sensorDataType sensorDataAvgTS = {0};
 sensorDataType sensorDataAcumSD = {0};
 sensorDataType sensorDataAvgSD = {0};
 
+int sizeofData = sizeof(sensorDataType)/sizeof(float);
 
-bool tests = false;
+//SD card related variables
+SPIClass SD_SPI(HSPI);
+SdFat SD;
+SdFile myFile;
+String filename = "";
+bool fileUpdate = false;
+
+//Time related variables
+String timestamp = "";
+int yesterday = 0;
+
+bool testsFailed = false;
 
 void setup()
 {
   Serial.begin(115200);
   WiFi.mode(WIFI_STA); 
   WiFi.begin(ssid, pass);
-    // Set timer frequency to 1Mhz
-  
   //Interruption related setup
   timer = timerBegin(1000000);
   timerAttachInterrupt(timer, &onTimer); //handler onTimer at the end of the program
   timerAlarm(timer, 1000000, true, 0); // repeat = true, unlimited cycles
-  //NTP server related setup
-  syncTime();
-  rtc.setTimeStruct(timeinfo);
-  prevEpochMeas = rtc.getEpoch();
-  prevEpochSD = rtc.getEpoch();
   //Iterval testing
   if((SDCardInterval % MeasureInterval) != 0){
     Serial.println("SD card saving interval is wrong");
-    tests = true;
+    testsFailed = true;
   }
   if((ThinkSpeakInterval % MeasureInterval) != 0){
     Serial.println("ThinkSpeak saving interval is wrong");
-    tests = true;
+    testsFailed = true;
   }
   //INA219 related setup
-  if (!ina219.begin()){
+  if(!ina219.begin()){
     Serial.println("Could not find INA219");
-  }
-  if(tests){
+    testsFailed = true;
+  }else Serial.println("INA219 initialized");
+  //DHT related setup
+  dht.begin();
+  if (isnan(dht.readHumidity()) || isnan(dht.readTemperature())) {
+    Serial.println("Could not read from DHT22");
+    testsFailed = true;
+  }else Serial.println("DHT22 initialized");
+  //SD card related setup
+  SD_SPI.begin(PIN_SCK_SD, PIN_MISO_SD, PIN_MOSI_SD, PIN_CS_SD);
+  // inicialize SD Card
+  if (!SD.begin(SdSpiConfig(PIN_CS_SD, SHARED_SPI, SD_SCK_MHZ(50), &SD_SPI))) {
+    Serial.println("Could not find SD card");
+    testsFailed = true;
+  }else Serial.println("SD card initialized");
+  //If the tests are not passed it stays here forever
+  if(testsFailed){
     while(true);
   }
+  delay(1000);
+  //NTP server related setup
+  while(WiFi.status() != WL_CONNECTED);
+  connected = true;
+  Serial.println("Internet connected");
+  while(!syncTime());
+  Serial.println("Time synchronization with NTC server succesful");
+  rtc.setTimeStruct(timeinfo);
   Serial.println(terminalHeader);
+  //Sync before start measuring
+  prevEpochInter = rtc.getEpoch();
+  prevEpochMeas = rtc.getEpoch();
+  prevEpochSD = rtc.getEpoch();
+  prevEpochTS = rtc.getEpoch();
 }
-
-
 
 void loop()
 {
   if(timer_flag){
-    if(WiFi.status() != WL_CONNECTED){
-      Serial.print("Could not connect to: ");
-      Serial.println(ssid);
-    }else
-    {
-      // Serial.print("Connected to: ");
-      // Serial.println(ssid);
-    }
-    // Serial.println(&timeinfo, "%Y-%m-d %H:%M:%S");
-    // Serial.println(rtc.getTime("%Y-%m-%d %H:%M:%S,"));
+    // Sync times before measurements
+    timestamp = rtc.getTime("%Y-%m-%d %H:%M:%S");
     currEpoch = rtc.getEpoch();
+    // Check if there is day change
+    if(rtc.getDay()!=yesterday){
+      filename = rtc.getTime("%Y-%m-%d.csv");
+      fileUpdate = true;
+    }
+    yesterday = rtc.getDay();
+    // Check internet every "InternetInterval"
+    if(intervalEval(InternetInterval,currEpoch,prevEpochInter,&prevEpochInter)){
+      if(WiFi.status() != WL_CONNECTED){
+        connected = false;
+      }else{
+        connected = true;
+        syncTime();
+        rtc.setTimeStruct(timeinfo);
+      }
+    }
     // Make measurements every "MeasureInterval"
     if(intervalEval(MeasureInterval,currEpoch,prevEpochMeas,&prevEpochMeas)){
       sensorData.voltage = ina219.getBusVoltage_V();
@@ -134,28 +186,39 @@ void loop()
       sensorData.CO = gasSensor(CO_pin,285,420);
       sensorData.NO = gasSensor(NO_pin,250,800);
       sensorData.SO = gasSensor(SO_pin,350,500);
-      sensorDataAcumSD = acumulating(sensorData,sensorDataAcumSD);
-      sensorDataAcumTS = acumulating(sensorData,sensorDataAcumSD);
+      acumulating(&sensorData,&sensorDataAcumSD,sizeofData);
+      acumulating(&sensorData,&sensorDataAcumTS,sizeofData);
     }
     // Make averaging an pub in the SD card every "SDCardInterval"
     if(intervalEval(SDCardInterval,currEpoch,prevEpochSD,&prevEpochSD)){
-      sensorDataAvgSD = averaging(sensorDataAcumSD,SDCardInterval,MeasureInterval);
+      averaging(&sensorDataAcumSD,&sensorDataAvgSD,sizeofData,SDCardInterval,MeasureInterval);
       sensorDataAcumSD = emptyData();
-      Serial.println(sensorData.CO);
-      Serial.println(sensorDataAvgSD.CO);
+      if (!myFile.open(filename.c_str(), O_RDWR | O_CREAT | O_AT_END)) {
+        Serial.print("SD Card: error on opening file ");
+        Serial.println(filename);
+      }
+      if(fileUpdate){
+        myFile.print(fileHeader);
+        fileUpdate = false;
+      }
+      printing(&myFile,&sensorDataAvgSD,sizeofData,timestamp,connected);
+      printing(&Serial,&sensorDataAvgSD,sizeofData,timestamp,connected);
+    }
+    if(intervalEval(ThinkSpeakInterval,currEpoch,prevEpochTS,&prevEpochTS)){
+      averaging(&sensorDataAcumTS,&sensorDataAvgTS,sizeofData,ThinkSpeakInterval,MeasureInterval);
+      sensorDataAcumTS = emptyData();
+      printing(&Serial,&sensorDataAvgTS,sizeofData,timestamp,connected);
     }
     timer_flag = 0;
   }
-
 }
 
-void syncTime() {
+bool syncTime() {
   configTime(UTCOffset, daylightOffset, ntpServer);
   if (!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
-    return;
+    return false;
   }
-  Serial.println("RTC set from NTP time");
+  return true;
 }
 
 //Time interruption handler
@@ -175,23 +238,34 @@ unsigned long intervalEval(unsigned long interval,unsigned long currE,unsigned l
   }
 }
 
-sensorDataType acumulating(sensorDataType measurements, sensorDataType acumulate)
+void acumulating(sensorDataType* measpointer, sensorDataType* acumpointer, int size)
 {
-  acumulate.voltage += measurements.voltage;
-  acumulate.current += measurements.current;
-  acumulate.humidity += measurements.humidity;
-  acumulate.temperature += measurements.temperature;
-  return acumulate;
+  float *floatMeasPtr = (float*)measpointer;
+  float *floatAcumPtr = (float*)acumpointer;
+  for (int i =0; i <= size; i++){
+    floatAcumPtr[i] += floatMeasPtr[i];
+  }
 }
 
-sensorDataType averaging(sensorDataType acumulator, int avgInterval, int measInterval)
+void averaging(sensorDataType* acumpointer, sensorDataType* avgpointer, int size, int avgInterval, int measInterval)
 {
-  sensorDataType average;
-  average.voltage = acumulator.voltage / ( avgInterval / measInterval );
-  average.current = acumulator.current / ( avgInterval / measInterval );
-  average.humidity = acumulator.humidity / ( avgInterval / measInterval );
-  average.temperature = acumulator.temperature / ( avgInterval / measInterval );
-  return average;
+  float *floatAcumPtr = (float*)acumpointer;
+  float *floatAvgPtr = (float*)avgpointer;
+  for (int i =0; i <= size; i++){
+    floatAvgPtr[i] = floatAcumPtr[i] / ( avgInterval / measInterval );
+  }
+}
+
+void printing(Print* printtype, sensorDataType* datapointer, int size, String tstamp, bool connStatus){
+  float *floatPtr = (float*)datapointer;
+  printtype->print(tstamp);
+  printtype->print(',');
+  for (int i =0; i <= size; i++){
+    printtype->print(*(floatPtr + i));
+    printtype->print(',');
+  }
+  printtype->print(connStatus);
+  printtype->print('\n');
 }
 
 sensorDataType emptyData()
