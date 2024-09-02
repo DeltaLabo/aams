@@ -124,15 +124,14 @@ void setup()
     testsFailed = true;
   }else Serial.println("INA219 initialized");
   //DHT related setup
-  dht.read22(DHT22_PIN);
-  if (dht.read22(DHT22_PIN)!=DHTLIB_OK) {
+  if(dht.read22(DHT22_PIN) != 0){
     Serial.println("Could not read from DHT22");
     testsFailed = true;
   }else Serial.println("DHT22 initialized");
   //SD card related setup
   SD_SPI.begin(PIN_SCK_SD, PIN_MISO_SD, PIN_MOSI_SD, PIN_CS_SD);
   // inicialize SD Card
-  if (!SD.begin(SdSpiConfig(PIN_CS_SD, SHARED_SPI, SD_SCK_MHZ(50), &SD_SPI))) {
+  if(!SD.begin(SdSpiConfig(PIN_CS_SD, SHARED_SPI, SD_SCK_MHZ(50), &SD_SPI))){
     Serial.println("Could not find SD card");
     testsFailed = true;
   }else Serial.println("SD card initialized");
