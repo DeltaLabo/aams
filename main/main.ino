@@ -1,7 +1,7 @@
 #include <WiFi.h>
 #include <ESP32Time.h> //RTC
 #include "Adafruit_INA219.h"
-#include <DHT.h>
+#include <DHTStable.h>
 #include <SPI.h>
 #include <SdFat.h>
 //#include <sdios.h>
@@ -15,7 +15,7 @@
 
 //Sensor related definitions
 #define DHT22_PIN  6
-#define DHTTYPE DHT22
+//#define DHTTYPE DHT22
 #define CO_pin  7
 #define NO_pin 5
 #define SO_pin 3
@@ -63,7 +63,8 @@ unsigned long prevEpochTS = 0;
 Adafruit_INA219 ina219;
 
 //DHT related variables
-DHT dht(DHT22_PIN, DHTTYPE, 22);
+DHTStable dht;
+//DHT dht(DHT22_PIN, DHTTYPE, 22);
 
 //Sensor related variables
 typedef struct sensorDataType {
@@ -123,8 +124,8 @@ void setup()
     testsFailed = true;
   }else Serial.println("INA219 initialized");
   //DHT related setup
-  dht.begin();
-  if (isnan(dht.readHumidity()) || isnan(dht.readTemperature())) {
+  dht.read22(DHT22_PIN);
+  if (dht.read22(DHT22_PIN)!=DHTLIB_OK) {
     Serial.println("Could not read from DHT22");
     testsFailed = true;
   }else Serial.println("DHT22 initialized");
@@ -181,8 +182,8 @@ void loop()
     if(intervalEval(MeasureInterval,currEpoch,prevEpochMeas,&prevEpochMeas)){
       sensorData.voltage = ina219.getBusVoltage_V();
       sensorData.current = ina219.getCurrent_mA();
-      sensorData.humidity = dht.readHumidity();
-      sensorData.temperature = dht.readTemperature();
+      sensorData.humidity = dht.getHumidity();
+      sensorData.temperature = dht.getTemperature();
       sensorData.CO = gasSensor(CO_pin,285,420);
       sensorData.NO = gasSensor(NO_pin,250,800);
       sensorData.SO = gasSensor(SO_pin,350,500);
@@ -198,7 +199,7 @@ void loop()
         Serial.println(filename);
       }
       if(fileUpdate){
-        myFile.print(fileHeader);
+        myFile.println(fileHeader);
         fileUpdate = false;
       }
       printing(&myFile,&sensorDataAvgSD,sizeofData,timestamp,connected);
