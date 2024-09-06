@@ -4,18 +4,16 @@
 #include <DHTStable.h>
 #include <SPI.h>
 #include <SdFat.h>
-//#include <sdios.h>
 #include <SdFatConfig.h>
 
 //Interval definitions in seconds
-#define InternetInterval    10
+#define InternetInterval    43200
 #define MeasureInterval     1
 #define ThinkSpeakInterval  60
 #define SDCardInterval      5
 
 //Sensor related definitions
 #define DHT22_PIN  6
-//#define DHTTYPE DHT22
 #define CO_pin  7
 #define NO_pin 5
 #define SO_pin 3
@@ -35,8 +33,8 @@
 #define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi"
 
 //WiFi related variables
-const char* ssid = "RM_interior";
-const char* pass = "RM20JUNE";
+const char* ssid = "LaboratorioDelta";
+const char* pass = "labdelta21!";
 bool connected = false;
 
 //Interruption related variables
@@ -64,7 +62,6 @@ Adafruit_INA219 ina219;
 
 //DHT related variables
 DHTStable dht;
-//DHT dht(DHT22_PIN, DHTTYPE, 22);
 
 //Sensor related variables
 typedef struct sensorDataType {
@@ -106,7 +103,7 @@ void setup()
   WiFi.mode(WIFI_STA); 
   WiFi.begin(ssid, pass);
   //Interruption related setup
-  timer = timerBegin(1000000);
+  timer = timerBegin(1000000); //1e6 us
   timerAttachInterrupt(timer, &onTimer); //handler onTimer at the end of the program
   timerAlarm(timer, 1000000, true, 0); // repeat = true, unlimited cycles
   //Iterval testing
@@ -164,9 +161,10 @@ void loop()
     // Check if there is day change
     if(rtc.getDay()!=yesterday){
       filename = rtc.getTime("%Y-%m-%d.csv");
+      yesterday = rtc.getDay();
       fileUpdate = true;
+
     }
-    yesterday = rtc.getDay();
     // Check internet every "InternetInterval"
     if(intervalEval(InternetInterval,currEpoch,prevEpochInter,&prevEpochInter)){
       if(WiFi.status() != WL_CONNECTED){
@@ -260,7 +258,7 @@ void printing(Print* printtype, sensorDataType* datapointer, int size, String ts
   float *floatPtr = (float*)datapointer;
   printtype->print(tstamp);
   printtype->print(',');
-  for (int i =0; i <= size; i++){
+  for (int i = 0; i <= (size - 1); i++){
     printtype->print(*(floatPtr + i));
     printtype->print(',');
   }
