@@ -11,7 +11,7 @@
 #define InternetInterval    43200
 #define MeasureInterval     1
 #define ThingSpeakInterval  60
-#define SDCardInterval      5
+#define SDCardInterval      10
 
 //Sensor related definitions
 #define DHT22_PIN  6
@@ -37,6 +37,7 @@
 const char* ssid = "LaboratorioDelta";
 const char* pass = "labdelta21!";
 bool connected = false;
+WiFiClient  client;
 
 // ThingSpeak related variables
 unsigned long myChannelNumber = 2363549;
@@ -108,7 +109,7 @@ void setup()
   Serial.begin(115200);
   WiFi.mode(WIFI_STA); 
   WiFi.begin(ssid, pass);
-  ThingSpeak.begin(WiFiClient());
+  ThingSpeak.begin(client);
   //Interruption related setup
   timer = timerBegin(1000000); //1e6 us
   timerAttachInterrupt(timer, &onTimer); //handler onTimer at the end of the program
@@ -215,16 +216,16 @@ void loop()
       sensorDataAcumTS = emptyData();
       printing(&Serial,&sensorDataAvgTS,sizeofData,timestamp,connected,updateTS);
       // Upload data to ThingSpeak
-      ThingSpeak.setField(1, sensorDataAVgTS.CO);
-      ThingSpeak.setField(2, sensorDataAVgTS.NO);
-      ThingSpeak.setField(3, sensorDataAVgTS.SO);
-      ThingSpeak.setField(4, sensorDataAVgTS.voltage);
-      ThingSpeak.setField(5, sensorDataAVgTS.current);
-      ThingSpeak.setField(6, sensorDataAVgTS.humidity);
-      ThingSpeak.setField(7, sensorDataAVgTS.PM2);
-      ThingSpeak.setField(8, sensorDataAVgTS.PM10);
+      ThingSpeak.setField(1, sensorDataAvgTS.CO);
+      ThingSpeak.setField(2, sensorDataAvgTS.NO);
+      ThingSpeak.setField(3, sensorDataAvgTS.SO);
+      ThingSpeak.setField(4, sensorDataAvgTS.voltage);
+      ThingSpeak.setField(5, sensorDataAvgTS.current);
+      ThingSpeak.setField(6, sensorDataAvgTS.humidity);
+      ThingSpeak.setField(7, sensorDataAvgTS.PM2);
+      ThingSpeak.setField(8, sensorDataAvgTS.PM10);
       
-      if (ThingSpeak.writeField(myChannelNumber, myWriteAPIKey) == 200){
+      if (ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey) == 200){
         updateTS = true;
       } else{
         updateTS = false;
@@ -277,7 +278,7 @@ void averaging(sensorDataType* acumpointer, sensorDataType* avgpointer, int size
   }
 }
 
-void printing(Print* printtype, sensorDataType* datapointer, int size, String tstamp, bool connStatus){
+void printing(Print* printtype, sensorDataType* datapointer, int size, String tstamp, bool connStatus, bool serverStatus){
   float *floatPtr = (float*)datapointer;
   printtype->print(tstamp);
   printtype->print(',');
@@ -286,6 +287,8 @@ void printing(Print* printtype, sensorDataType* datapointer, int size, String ts
     printtype->print(',');
   }
   printtype->print(connStatus);
+  printtype->print(',');
+  printtype->print(serverStatus);
   printtype->print('\n');
 }
 
