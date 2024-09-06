@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include "ThingSpeak.h"
 #include <ESP32Time.h> //RTC
 #include "Adafruit_INA219.h"
 #include <DHTStable.h>
@@ -9,7 +10,7 @@
 //Interval definitions in seconds
 #define InternetInterval    43200
 #define MeasureInterval     1
-#define ThinkSpeakInterval  60
+#define ThingSpeakInterval  60
 #define SDCardInterval      5
 
 //Sensor related definitions
@@ -29,13 +30,18 @@
 #define PIN_CS_SD 26
 
 //Terminal printing and files related definitions
-#define terminalHeader  "timestamp,voltage (V),current (mA),humidity (%),temperature (°C),CO (ppb),NO2 (ppb),SO2 (ppb),PM1 (ug/m^3),PM2.5 (ug/m^3),PM10 (ug/m^3),WiFi"
-#define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi"
+#define terminalHeader  "timestamp,voltage (V),current (mA),humidity (%),temperature (°C),CO (ppb),NO2 (ppb),SO2 (ppb),PM1 (ug/m^3),PM2.5 (ug/m^3),PM10 (ug/m^3),WiFi,IoT"
+#define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi,IoT"
 
 //WiFi related variables
 const char* ssid = "LaboratorioDelta";
 const char* pass = "labdelta21!";
 bool connected = false;
+
+// ThingSpeak related variables
+unsigned long myChannelNumber = 2363549;
+const char* myWriteAPIKey = "NR8GHTJF3IC27CIP";
+bool updateTS = false;
 
 //Interruption related variables
 hw_timer_t *timer = NULL;
@@ -46,7 +52,7 @@ ESP32Time rtc(0);
 
 //NTP
 const char* ntpServer = "pool.ntp.org";
-const long  UTCOffset = -21600;
+const long  UTCOffset = -21600; // UTC-6 (Costa Rica)
 const int   daylightOffset = 0;
 struct tm timeinfo;
 
@@ -102,6 +108,7 @@ void setup()
   Serial.begin(115200);
   WiFi.mode(WIFI_STA); 
   WiFi.begin(ssid, pass);
+  ThingSpeak.begin(WiFiClient());
   //Interruption related setup
   timer = timerBegin(1000000); //1e6 us
   timerAttachInterrupt(timer, &onTimer); //handler onTimer at the end of the program
@@ -111,8 +118,8 @@ void setup()
     Serial.println("SD card saving interval is wrong");
     testsFailed = true;
   }
-  if((ThinkSpeakInterval % MeasureInterval) != 0){
-    Serial.println("ThinkSpeak saving interval is wrong");
+  if((ThingSpeakInterval % MeasureInterval) != 0){
+    Serial.println("ThingSpeak saving interval is wrong");
     testsFailed = true;
   }
   //INA219 related setup
@@ -187,7 +194,7 @@ void loop()
       acumulating(&sensorData,&sensorDataAcumSD,sizeofData);
       acumulating(&sensorData,&sensorDataAcumTS,sizeofData);
     }
-    // Make averaging an pub in the SD card every "SDCardInterval"
+    // Make averaging a pub in the SD card every "SDCardInterval"
     if(intervalEval(SDCardInterval,currEpoch,prevEpochSD,&prevEpochSD)){
       averaging(&sensorDataAcumSD,&sensorDataAvgSD,sizeofData,SDCardInterval,MeasureInterval);
       sensorDataAcumSD = emptyData();
@@ -199,16 +206,32 @@ void loop()
         myFile.println(fileHeader);
         fileUpdate = false;
       }
-      printing(&myFile,&sensorDataAvgSD,sizeofData,timestamp,connected);
-      printing(&Serial,&sensorDataAvgSD,sizeofData,timestamp,connected);
+      printing(&myFile,&sensorDataAvgSD,sizeofData,timestamp,connected, updateTS);
+      printing(&Serial,&sensorDataAvgSD,sizeofData,timestamp,connected, updateTS);
     }
-    if(intervalEval(ThinkSpeakInterval,currEpoch,prevEpochTS,&prevEpochTS)){
-      averaging(&sensorDataAcumTS,&sensorDataAvgTS,sizeofData,ThinkSpeakInterval,MeasureInterval);
+    // Averaging for ThingSpeak
+    if(intervalEval(ThingSpeakInterval,currEpoch,prevEpochTS,&prevEpochTS)){
+      averaging(&sensorDataAcumTS,&sensorDataAvgTS,sizeofData,ThingSpeakInterval,MeasureInterval);
       sensorDataAcumTS = emptyData();
-      printing(&Serial,&sensorDataAvgTS,sizeofData,timestamp,connected);
+      printing(&Serial,&sensorDataAvgTS,sizeofData,timestamp,connected,updateTS);
+      // Upload data to ThingSpeak
+      ThingSpeak.setField(1, sensorDataAVgTS.CO);
+      ThingSpeak.setField(2, sensorDataAVgTS.NO);
+      ThingSpeak.setField(3, sensorDataAVgTS.SO);
+      ThingSpeak.setField(4, sensorDataAVgTS.voltage);
+      ThingSpeak.setField(5, sensorDataAVgTS.current);
+      ThingSpeak.setField(6, sensorDataAVgTS.humidity);
+      ThingSpeak.setField(7, sensorDataAVgTS.PM2);
+      ThingSpeak.setField(8, sensorDataAVgTS.PM10);
+      
+      if (ThingSpeak.writeField(myChannelNumber, myWriteAPIKey) == 200){
+        updateTS = true;
+      } else{
+        updateTS = false;
+      }
     }
     timer_flag = 0;
-  }
+  } 
 }
 
 bool syncTime() {
