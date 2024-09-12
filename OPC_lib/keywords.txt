@@ -1,0 +1,14 @@
+OPC	KEYWORD1
+SetSSpin	KEYWORD1
+PrintDataLabels KEYWORD1
+InitDevice  KEYWORD1
+StartOPC    KEYWORD1
+GetReadyResponse    KEYWORD1
+ReadOPChist KEYWORD1
+PrintData   KEYWORD1
+AddDelimiter    KEYWORD1
+_calc_float KEYWORD1
+ConvSTtoTemperature KEYWORD1
+ConvSRHtoRelativeHumidity   KEYWORD1
+MODBUS_CalcCRC  KEYWORD1
+StopOPC KEYWORD1
