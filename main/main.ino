@@ -6,6 +6,7 @@
 #include <SPI.h>
 #include <SdFat.h>
 #include <SdFatConfig.h>
+#include <Wire.h> //INA 219 fail
 
 //Interval definitions in seconds
 #define InternetInterval    43200
@@ -34,8 +35,10 @@
 #define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi,IoT"
 
 //WiFi related variables
-const char* ssid = "LaboratorioDelta";
-const char* pass = "labdelta21!";
+// const char* ssid = "LaboratorioDelta";
+// const char* pass = "labdelta21!";
+const char* ssid = "Juanjo";
+const char* pass = "needuhuru";
 bool connected = false;
 WiFiClient  client;
 
@@ -107,22 +110,30 @@ bool testsFailed = false;
 void setup()
 {
   Serial.begin(115200);
+  Serial.println("Setup start");
   WiFi.mode(WIFI_STA); 
   WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Internet not connected");
+  }
+  connected = true;
+  Serial.println("Internet connected");
   ThingSpeak.begin(client);
   //Interruption related setup
   timer = timerBegin(1000000); //1e6 us
   timerAttachInterrupt(timer, &onTimer); //handler onTimer at the end of the program
   timerAlarm(timer, 1000000, true, 0); // repeat = true, unlimited cycles
+  Serial.println("Timer configured");
   //Iterval testing
   if((SDCardInterval % MeasureInterval) != 0){
     Serial.println("SD card saving interval is wrong");
     testsFailed = true;
-  }
+  }else Serial.println("SD card saving interval correct");
   if((ThingSpeakInterval % MeasureInterval) != 0){
     Serial.println("ThingSpeak saving interval is wrong");
     testsFailed = true;
-  }
+  }else Serial.println("ThingSpeak saving interval correct");
   //INA219 related setup
   if(!ina219.begin()){
     Serial.println("Could not find INA219");
@@ -142,13 +153,11 @@ void setup()
   }else Serial.println("SD card initialized");
   //If the tests are not passed it stays here forever
   if(testsFailed){
+    Serial.println("Tests have failed");
     while(true);
   }
   delay(1000);
   //NTP server related setup
-  while(WiFi.status() != WL_CONNECTED);
-  connected = true;
-  Serial.println("Internet connected");
   while(!syncTime());
   Serial.println("Time synchronization with NTC server succesful");
   rtc.setTimeStruct(timeinfo);
@@ -214,7 +223,6 @@ void loop()
     if(intervalEval(ThingSpeakInterval,currEpoch,prevEpochTS,&prevEpochTS)){
       averaging(&sensorDataAcumTS,&sensorDataAvgTS,sizeofData,ThingSpeakInterval,MeasureInterval);
       sensorDataAcumTS = emptyData();
-      printing(&Serial,&sensorDataAvgTS,sizeofData,timestamp,connected,updateTS);
       // Upload data to ThingSpeak
       ThingSpeak.setField(1, sensorDataAvgTS.CO);
       ThingSpeak.setField(2, sensorDataAvgTS.NO);
@@ -224,7 +232,6 @@ void loop()
       ThingSpeak.setField(6, sensorDataAvgTS.humidity);
       ThingSpeak.setField(7, sensorDataAvgTS.PM2);
       ThingSpeak.setField(8, sensorDataAvgTS.PM10);
-      
       if (ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey) == 200){
         updateTS = true;
       } else{
