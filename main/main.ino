@@ -6,7 +6,6 @@
 #include <SPI.h>
 #include <SdFat.h>
 #include <SdFatConfig.h>
-#include <Wire.h> //INA 219 fail
 
 //Interval definitions in seconds
 #define InternetInterval    43200
@@ -135,10 +134,10 @@ void setup()
     testsFailed = true;
   }else Serial.println("ThingSpeak saving interval correct");
   //INA219 related setup
-  if(!ina219.begin()){
-    Serial.println("Could not find INA219");
-    testsFailed = true;
-  }else Serial.println("INA219 initialized");
+  // if(!ina219.begin()){
+  //   Serial.println("Could not find INA219");
+  //   testsFailed = true;
+  // }else Serial.println("INA219 initialized");
   //DHT related setup
   if(dht.read22(DHT22_PIN) != 0){
     Serial.println("Could not read from DHT22");
