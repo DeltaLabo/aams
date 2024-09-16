@@ -34,10 +34,10 @@
 #define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi,IoT"
 
 //WiFi related variables
-// const char* ssid = "LaboratorioDelta";
-// const char* pass = "labdelta21!";
-const char* ssid = "Juanjo";
-const char* pass = "needuhuru";
+ const char* ssid = "LaboratorioDelta";
+ const char* pass = "labdelta21!";
+//const char* ssid = "Juanjo";
+//const char* pass = "needuhuru";
 bool connected = false;
 WiFiClient  client;
 
@@ -134,10 +134,10 @@ void setup()
     testsFailed = true;
   }else Serial.println("ThingSpeak saving interval correct");
   //INA219 related setup
-  // if(!ina219.begin()){
-  //   Serial.println("Could not find INA219");
-  //   testsFailed = true;
-  // }else Serial.println("INA219 initialized");
+  if(!ina219.begin()){
+    Serial.println("Could not find INA219");
+    testsFailed = true;
+  }else Serial.println("INA219 initialized");
   //DHT related setup
   if(dht.read22(DHT22_PIN) != 0){
     Serial.println("Could not read from DHT22");
