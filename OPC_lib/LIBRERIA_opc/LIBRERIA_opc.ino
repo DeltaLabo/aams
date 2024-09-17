@@ -43,12 +43,9 @@ void setup() {
 
 void loop() {
   
-  unsigned long GetHistTime = millis(); //Set initial GetHistTime
-      
   StartOPC(ssPin_OPC);
   delay(1000);
   ReadOPChist(ssPin_OPC); //Read OPC histogram data
-  opSerial.print(millis());
   PrintData(opSerial); //Print data to serial
   Serial.println(mydata.temp);
   Serial.println(mydata.humid);

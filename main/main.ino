@@ -6,6 +6,7 @@
 #include <SPI.h>
 #include <SdFat.h>
 #include <SdFatConfig.h>
+#include "OPC.h"
 
 //Interval definitions in seconds
 #define InternetInterval    43200
@@ -100,6 +101,12 @@ SdFile myFile;
 String filename = "";
 bool fileUpdate = false;
 
+//OPC realted variables
+SPIClass OP_SPI(HSPI);
+#define SPI_OPC_busy 0x31
+#define SPI_OPC_ready 0xF3
+unsigned char SPI_in[68], SPI_in_index;
+
 //Time related variables
 String timestamp = "";
 int yesterday = 0;
@@ -150,6 +157,11 @@ void setup()
     Serial.println("Could not find SD card");
     testsFailed = true;
   }else Serial.println("SD card initialized");
+  //OPC related setup
+  OP_SPI.begin(PIN_SCK_OPC, PIN_MISO_OPC, PIN_MOSI_OPC, PIN_CS_OPC);
+  // inicialize OPC
+  StartOPC(PIN_CS_OPC);
+  Serial.println("OPC initialized");
   //If the tests are not passed it stays here forever
   if(testsFailed){
     Serial.println("Tests have failed");
@@ -200,6 +212,8 @@ void loop()
       sensorData.CO = gasSensor(CO_pin,285,420);
       sensorData.NO = gasSensor(NO_pin,250,800);
       sensorData.SO = gasSensor(SO_pin,350,500);
+      ReadOPChist(PIN_CS_OPC);
+      Transfer_PM();
       acumulating(&sensorData,&sensorDataAcumSD,sizeofData);
       acumulating(&sensorData,&sensorDataAcumTS,sizeofData);
     }
@@ -298,8 +312,7 @@ void printing(Print* printtype, sensorDataType* datapointer, int size, String ts
   printtype->print('\n');
 }
 
-sensorDataType emptyData()
-{
+sensorDataType emptyData(){
   sensorDataType empty = {0};
   return empty;
 }
@@ -311,3 +324,26 @@ float gasSensor(int pin, int offset, int sens) {
   value *= 1000; //convert to ppb
   return value;
 }
+
+void Transfer_PM()
+{
+    // Variables para los valores de PM
+    float PMs[3]; // Ajustado para 3 valores de PM (PM1, PM2, PM10)
+    
+    // Extraer y calcular los valores de PM desde SPI_in
+    for (int i = 50; i < 62; i += 4) {
+        // Unir la funcionalidad de _calc_float aquí
+        uint8_t bytes[4] = {SPI_in[i], SPI_in[i+1], SPI_in[i+2], SPI_in[i+3]};
+        float result;
+        memcpy(&result, bytes, 4); // Convertir los 4 bytes a float
+        PMs[(i-50)/4] = result;    // Asignar el resultado
+    }
+    
+    // Asignar los valores a las variables en SensorData
+    // No estoy seguro si el orden es 1. 2. 10 o 1.2.5.10
+    SensorData.PM1 = PMs[0];
+    SensorData.PM2 = PMs[1];
+    SensorData.PM10 = PMs[2];
+}
+
+
