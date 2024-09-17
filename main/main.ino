@@ -341,9 +341,9 @@ void Transfer_PM()
     
     // Asignar los valores a las variables en SensorData
     // No estoy seguro si el orden es 1. 2. 10 o 1.2.5.10
-    SensorData.PM1 = PMs[0];
-    SensorData.PM2 = PMs[1];
-    SensorData.PM10 = PMs[2];
+    sensorData.PM1 = PMs[0];
+    sensorData.PM2 = PMs[1];
+    sensorData.PM10 = PMs[2];
 }
 
 
