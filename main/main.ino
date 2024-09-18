@@ -213,7 +213,7 @@ void loop()
       sensorData.NO = gasSensor(NO_pin,250,800);
       sensorData.SO = gasSensor(SO_pin,350,500);
       ReadOPChist(PIN_CS_OPC);
-      Transfer_PM();
+      transferPM();
       acumulating(&sensorData,&sensorDataAcumSD,sizeofData);
       acumulating(&sensorData,&sensorDataAcumTS,sizeofData);
     }
@@ -325,25 +325,25 @@ float gasSensor(int pin, int offset, int sens) {
   return value;
 }
 
-void Transfer_PM()
+void transferPM()
 {
-    // Variables para los valores de PM
-    float PMs[3]; // Ajustado para 3 valores de PM (PM1, PM2, PM10)
-    
-    // Extraer y calcular los valores de PM desde SPI_in
-    for (int i = 50; i < 62; i += 4) {
-        // Unir la funcionalidad de _calc_float aquí
-        uint8_t bytes[4] = {SPI_in[i], SPI_in[i+1], SPI_in[i+2], SPI_in[i+3]};
-        float result;
-        memcpy(&result, bytes, 4); // Convertir los 4 bytes a float
-        PMs[(i-50)/4] = result;    // Asignar el resultado
-    }
-    
-    // Asignar los valores a las variables en SensorData
-    // No estoy seguro si el orden es 1. 2. 10 o 1.2.5.10
-    sensorData.PM1 = PMs[0];
-    sensorData.PM2 = PMs[1];
-    sensorData.PM10 = PMs[2];
+  // Variables para los valores de PM
+  float PMs[3]; // Ajustado para 3 valores de PM (PM1, PM2, PM10)
+  
+  // Extraer y calcular los valores de PM desde SPI_in
+  for (int i = 50; i < 62; i += 4) {
+      // Unir la funcionalidad de _calc_float aquí
+      uint8_t bytes[4] = {SPI_in[i], SPI_in[i+1], SPI_in[i+2], SPI_in[i+3]};
+      float result;
+      memcpy(&result, bytes, 4); // Convertir los 4 bytes a float
+      PMs[(i-50)/4] = result;    // Asignar el resultado
+  }
+  
+  // Asignar los valores a las variables en SensorData
+  // No estoy seguro si el orden es 1. 2. 10 o 1.2.5.10
+  sensorData.PM1 = PMs[0];
+  sensorData.PM2 = PMs[1];
+  sensorData.PM10 = PMs[2];
 }
 
 
