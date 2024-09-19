@@ -6,6 +6,11 @@
 #define SPI_OPC_busy 0x31
 #define SPI_OPC_ready 0xF3
 
+#define PIN_MISO_OPC 35
+#define PIN_MOSI_OPC 34
+#define PIN_SCK_OPC 36
+#define PIN_CS_OPC 33
+
 unsigned long currentTime;
 unsigned long cloopTime;
 unsigned char SPI_in[68], SPI_in_index, ssPin_OPC;
