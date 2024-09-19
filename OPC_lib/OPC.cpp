@@ -9,11 +9,37 @@ void SetSSpin (unsigned char ssPin_OPC, bool pinState) {
    digitalWrite(ssPin_OPC, pinState);
 }
 
+void InitDevice (void){
+
+  ReadOPCstring(0x10); //Get serialstr from OPC device
+  ReadOPCstring(0x3F); //Get infostr from OPC device
+
+  StartOPC(); //Switch on power to fan and laser
+  
+  //ReadOPCconfig(opSerial); //Get Config data (bin boundaries etc.) from OPC device
+}
+
+/*
+//Get string (serialstr or infostr) from OPC device
+void ReadOPCstring (unsigned char SPIcommand)
+{
+  unsigned char SPI_in_index
+  GetReadyResponse(33,SPIcommand);
+  for (SPI_in_index=0; SPI_in_index<60; SPI_in_index++)
+  {
+    delayMicroseconds(10);
+    SPI_in[SPI_in_index] = SPI.transfer(0x01); //Value of outgoing byte doesn't matter
+  }
+
+  SetSSpin(33,HIGH);
+  SPI.endTransaction();
+  //PrintOPCstring(opSerial);
+}
+*/
+
 void StartOPC (unsigned char ssPin_OPC)
 {
   //Turn ON fan and peripheral power
-  SetSSpin(ssPin_OPC, HIGH);  
-  pinMode(ssPin_OPC, OUTPUT);
   GetReadyResponse(ssPin_OPC, 0x03);
   SPI.transfer(0x03); //Turn ON fan and peripheral power
   SetSSpin(ssPin_OPC, HIGH);

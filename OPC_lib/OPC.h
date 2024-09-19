@@ -8,3 +8,6 @@ void StartOPC (unsigned char ssPin_OPC);
 void GetReadyResponse (unsigned char ssPin_OPC, unsigned char SPIcommand);
 void ReadOPChist(unsigned char ssPin_OPC);
 void StopOPC (unsigned char ssPin_OPC);
+
+
+//void ReadOPCstring (unsigned char SPIcommand)

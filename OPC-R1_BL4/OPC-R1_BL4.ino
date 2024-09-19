@@ -1,12 +1,4 @@
-/*****************
-Use EZ Transfer
-*****************/
-//OPC Temp added
-
 #include <SPI.h>
-//#include <avr/wdt.h>
-//#include <SoftwareSerial.h>
-//#include <SoftEasyTransfer.h>
 
 #define ArduinoUNO
 #define opSerial Serial
@@ -18,8 +10,7 @@ unsigned long currentTime;
 unsigned long cloopTime;
 unsigned char SPI_in[68], SPI_in_index, ssPin_OPC;
 
-//SoftwareSerial opcSerial(4, 5); //rx,tx
-//SoftEasyTransfer ET; 
+
 struct SEND_DATA_STRUCTURE{
   unsigned int hist[16];
   float temp;
@@ -30,7 +21,6 @@ SEND_DATA_STRUCTURE mydata;
 
 void setup()
 {
-
   //Set all the pins available for use as SS pins to outputs and set HIGH
   for (unsigned char i=2;i<11;i++)
   {
@@ -41,15 +31,15 @@ void setup()
   delay(1000); //delay in case of noise on power connection. Also allows OPC to boot up.
 
   //Start serial port
-  opcSerial.begin(9600);
   opSerial.begin(BaudRate);
 
   // start the SPI library:
   SPI.begin(); //Enable SPI for OPC comms
 
-  ssPin_OPC = 36;
+  //Device #1 (ssPin_OPC = 10)
+  ssPin_OPC = 10;
   InitDevice();
-
+  //END Device #1
   PrintDataLabels(opSerial); //Print labels to serial port - optional BL
 }
 
@@ -67,7 +57,6 @@ void InitDevice (void)
 // Main Loop
 void loop()
 {
-  wdt_reset(); //Reset watchdog timer
 
       ssPin_OPC = 10;
 
@@ -75,10 +64,7 @@ void loop()
       ReadOPChist(); //Read OPC histogram data
       opSerial.print(millis());
       PrintData(opSerial); //Print data to serial
-      wdt_reset(); //Reset watchdog timer
-      //ET.sendData();
       delay(5000);
-      wdt_reset(); //Reset watchdog timer
       Serial.println(mydata.temp);
       Serial.println(mydata.humid);
       Serial.println(mydata.PM[0]);
@@ -153,7 +139,6 @@ void StartOPC (void)
   //Wait for fan to reach full speed (and for multiple attempts by OPC firmware to turn on fan)
   for (byte i=0; i<5; i++)
   {
-    wdt_reset(); //Reset watchdog timer
     delay(1000);
   }
 }
@@ -163,7 +148,7 @@ void GetReadyResponse (unsigned char SPIcommand)
 {
   unsigned char Response;
 
-  SPI.beginTransaction(SPISettings(300000, MSBFIRST, SPI_MODE1));
+  SPI.beginTransaction(SPISettings(300000, MSBFIRST, SPI_MODE2));
 
   //Try reading a byte here to clear out anything remnant of SD card SPI activity (WORKS!)
   Response = SPI.transfer(SPIcommand);
@@ -187,7 +172,6 @@ void GetReadyResponse (unsigned char SPIcommand)
         SetSSpin(HIGH);
         Serial.println(F("ERROR Waiting 2s (for OPC comms timeout)")); //signal user
         Serial.flush();
-        wdt_reset();
         delay(2000); //wait 2s
       }
       else
@@ -198,9 +182,7 @@ void GetReadyResponse (unsigned char SPIcommand)
         Serial.flush();
         SPI.endTransaction();
         //Wait 6s here for buffer to be cleared
-        wdt_reset();
         delay(6000);
-        wdt_reset();
         SPI.beginTransaction(SPISettings(300000, MSBFIRST, SPI_MODE1));
       }
     }
@@ -208,7 +190,6 @@ void GetReadyResponse (unsigned char SPIcommand)
   while ((Response != SPI_OPC_ready) && (Serial.available()==0)); //don't hang on this if data is coming in on serial interface
   delay(10);
 
-  wdt_reset();
 }
 
 
