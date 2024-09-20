@@ -102,7 +102,7 @@ String filename = "";
 bool fileUpdate = false;
 
 //OPC realted variables
-SPIClass OP_SPI(HSPI);
+//SPIClass OP_SPI(HSPI);
 #define SPI_OPC_busy 0x31
 #define SPI_OPC_ready 0xF3
 unsigned char SPI_in[68], SPI_in_index;
@@ -158,7 +158,7 @@ void setup()
     testsFailed = true;
   }else Serial.println("SD card initialized");
   //OPC related setup
-  OP_SPI.begin(PIN_SCK_OPC, PIN_MISO_OPC, PIN_MOSI_OPC, PIN_CS_OPC);
+  SPI.begin(PIN_SCK_OPC, PIN_MISO_OPC, PIN_MOSI_OPC, PIN_CS_OPC);
   // inicialize OPC
   StartOPC(PIN_CS_OPC);
   Serial.println("OPC initialized");
