@@ -159,7 +159,7 @@ void setup()
   }else Serial.println("SD card initialized");
   //OPC related setup
   SPI.begin(PIN_SCK_OPC, PIN_MISO_OPC, PIN_MOSI_OPC, PIN_CS_OPC);
-  // inicialize OPC
+  // initialize and turn on OPC
   StartOPC(PIN_CS_OPC);
   Serial.println("OPC initialized");
   //If the tests are not passed it stays here forever
@@ -212,6 +212,7 @@ void loop()
       sensorData.CO = gasSensor(CO_pin,285,420);
       sensorData.NO = gasSensor(NO_pin,250,800);
       sensorData.SO = gasSensor(SO_pin,350,500);
+      // Measure and transfer OPC data
       ReadOPChist(PIN_CS_OPC);
       transferPM();
       acumulating(&sensorData,&sensorDataAcumSD,sizeofData);
@@ -280,6 +281,7 @@ unsigned long intervalEval(unsigned long interval,unsigned long currE,unsigned l
   }
 }
 
+//acumulating function
 void acumulating(sensorDataType* measpointer, sensorDataType* acumpointer, int size)
 {
   float *floatMeasPtr = (float*)measpointer;
@@ -289,6 +291,7 @@ void acumulating(sensorDataType* measpointer, sensorDataType* acumpointer, int s
   }
 }
 
+//averaging function
 void averaging(sensorDataType* acumpointer, sensorDataType* avgpointer, int size, int avgInterval, int measInterval)
 {
   float *floatAcumPtr = (float*)acumpointer;
@@ -298,6 +301,7 @@ void averaging(sensorDataType* acumpointer, sensorDataType* avgpointer, int size
   }
 }
 
+//Printing function
 void printing(Print* printtype, sensorDataType* datapointer, int size, String tstamp, bool connStatus, bool serverStatus){
   float *floatPtr = (float*)datapointer;
   printtype->print(tstamp);
@@ -317,6 +321,7 @@ sensorDataType emptyData(){
   return empty;
 }
 
+//gasSensor function: measure of gas sensors
 float gasSensor(int pin, int offset, int sens) {
   float value = (analogRead(pin)*5000.0)/4096.0;
   value -= offset; //substract offset
@@ -325,25 +330,18 @@ float gasSensor(int pin, int offset, int sens) {
   return value;
 }
 
+//transferPM function: measures air quality with 3 PM values (PM1, PM2, PM10)
 void transferPM()
 {
-  // Variables para los valores de PM
-  float PMs[3]; // Ajustado para 3 valores de PM (PM1, PM2, PM10)
-  
-  // Extraer y calcular los valores de PM desde SPI_in
+  float PMs[3];
   for (int i = 50; i < 62; i += 4) {
-      // Unir la funcionalidad de _calc_float aquí
-      uint8_t bytes[4] = {SPI_in[i], SPI_in[i+1], SPI_in[i+2], SPI_in[i+3]};
+      uint8_t bytes[4] = {SPI_in[i], SPI_in[i+1], SPI_in[i+2], SPI_in[i+3]}; // Get data from OPC
       float result;
-      memcpy(&result, bytes, 4); // Convertir los 4 bytes a float
-      PMs[(i-50)/4] = result;    // Asignar el resultado
+      memcpy(&result, bytes, 4); // Convert 4 bytes into a float
+      PMs[(i-50)/4] = result;    // Assign the result
   }
-  
-  // Asignar los valores a las variables en SensorData
-  // No estoy seguro si el orden es 1. 2. 10 o 1.2.5.10
+  // Assign results to struct SensorData
   sensorData.PM1 = PMs[0];
   sensorData.PM2 = PMs[1];
   sensorData.PM10 = PMs[2];
 }
-
-
