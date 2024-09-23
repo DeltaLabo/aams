@@ -1,0 +1,4 @@
+order_no,type,gain,sensor_no,we_zero,aux_zero,we_sensor,sensitivity,elec_zero_we,elec_zero_aux
+86643,CO B4,0.8,162830052,455,358,594,0.475,367,381
+86643,SO2 B4,0.8,164400108,374,348,435,0.348,356,345
+86643,NO2 B43F,-0.73,202180512,218,227,-286,0.209,221,229
