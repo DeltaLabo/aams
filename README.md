@@ -7,27 +7,13 @@ Ambient air monitoring system
 
 * This repository was created to develop and ESP32 based embedded logger and cloud uploader for wind turbine power generation, and wind velocity data for LIENE.
 
-### Turbine info
+### Sensors info
 
-* [Info page](https://mwands.com/missouri-raptor-g4-wind-turbine-generator) 
+llenar
 
-### Anemometer info
+### Data analisys in Colab
 
-* Model: Inspeed Vortex
-* [Documentation page](http://www.old.inspeed.com/anemometers/Vortex_Wind_Sensor.asp)
-
-### Microcontroller info
-
-* Model: HELTEC LoRa 32
-* [Documentation page](https://heltec.org/project/wifi-lora-32/)
-* [Pinout diagram](https://resource.heltec.cn/download/WiFi_LoRa_32/WIFI_LoRa_32_V2.pdf)
-* [Schematic](https://resource.heltec.cn/download/WiFi_LoRa_32/V2/WIFI_LoRa_32_V2(868-915).PDF)
-* [ESP32 datasheet](https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf) 
-
-### Enclousure
-
-* [Page](https://www.se.com/es/es/product/NSYCRN33200P/spacial-crn-plain-door-with-mount.plate.-h300xw300xd200-ip66-ik10-ral7035../) 
-* [Page](https://mazcr.com/gabinetes-cajas-y-accesorios-plasticos/458040-caja-paso-162x212x110.html)
+* [Here](https://colab.research.google.com/drive/10Y06LCkb4wXB0IiQuRhNwwGWyyQc0qis?usp=sharing)
 
 ### How do I get set up? ###
 
