@@ -1,7 +1,7 @@
 Ambient air monitoring system
 ============
+## DeltaLAB - Instituto Tecnológico de Costa Rica
 
-#CAMBIAR TODO 
 
 ### What is this repository for? ###
 
@@ -37,5 +37,5 @@ Search `Adafruit MQTT` and install it.
 
 ### Who do I talk to? ###
 
-* [Juan J. Rojas](mailto:juan.rojas@itcr.ac.cr)
+* [Juan J. Rojas](mailto:juan.rojas@itcr.ac.cr) 
 * [Nestor Martinez](mailto:arnold7martinez@gmail.com)
