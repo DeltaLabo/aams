@@ -2,6 +2,11 @@ Ambient air monitoring system
 ============
 ## DeltaLAB - Instituto Tecnológico de Costa Rica
 
+### Developers
+
+* [Juan J. Rojas](mailto:juan.rojas@itcr.ac.cr) 
+* [Joseph Muñoz](mailto:munozcascante.j@estudiantec.cr)
+* [Nicole Prado](mailto:nicoleprado@estudiantec.cr)
 
 ### What is this repository for? ###
 
@@ -34,8 +39,3 @@ Search `Adafruit MQTT` and install it.
 
 * If you want to propose a review or need to modify the code for any reason first clone this [repository](https://github.com/DeltaLabo/anemos) in your PC and create a new branch for your changes. Once your changes are complete and fully tested ask the administrator permission to push this new branch into the source.
 * If you just want to do local changes instead you can download a zip version of the repository and do all changes locally in your PC. 
-
-### Who do I talk to? ###
-
-* [Juan J. Rojas](mailto:juan.rojas@itcr.ac.cr) 
-* [Nestor Martinez](mailto:arnold7martinez@gmail.com)
