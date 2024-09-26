@@ -37,11 +37,7 @@ Ambient air monitoring system
 * Follow this [instructions](https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html) to set up the Heltec Wifi LoRa 32 (V3) in the Arduino IDE
 * Install all the Libraries in the Arduino Library Manager
 Open Arduino IDE, then Select `Sketch`->`Include Library`->`Manage Libraries...`
-* Search `WiFi` and install it.
-* Search `ThingSpeak` and install it.
-* Search `Adafruit_INA219` and install it.
-* Search `SdFat` and install it.
-* Search `ESP32Time` and install it.
+* Search `WiFi`, `ThingSpeak`, `Adafruit_INA219`, `SdFat, and `ESP32Time` libraries and install them.
   
 * Connect the components as shown in the diagram found in schematic_diagram.pdf
 * Clone this repo and upload main.ino to the ESP32
