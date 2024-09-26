@@ -10,11 +10,14 @@ Ambient air monitoring system
 
 ### What is this repository for? ###
 
-* This repository was created to develop and ESP32 based embedded logger and cloud uploader for wind turbine power generation, and wind velocity data for LIENE.
+* This repository was created to develop a air quality monitoring device using an ESP32 microcontroller.
 
 ### Sensors info
 
-llenar
+* [OPC-R2 Optical Particle Counter](https://drive.google.com/file/d/1VDuOj8a8o7cUKEGa6ehXuCjHjkZSZghj/view?usp=drivesdk)
+* [Alphasense CO Sensor (CO-B4)]()
+* [Alphasense NO2 Sensor]()
+* [Alphasense SO2]()
 
 ### Data analisys in Colab
 
