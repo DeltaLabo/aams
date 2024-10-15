@@ -2,7 +2,7 @@
 #include "ThingSpeak.h"
 #include <ESP32Time.h> //RTC
 #include "Adafruit_INA219.h"
-#include <BME280I2C.h>
+#include <BME280.h>
 #include <SPI.h>
 #include <SdFat.h>
 #include <SdFatConfig.h>
@@ -51,7 +51,7 @@ hw_timer_t *timer = NULL;
 bool timer_flag = true;
 
 //RTC related variables
-ESP32Time rtc(0);
+BME280I2C bme;  
 
 //NTP
 const char* ntpServer = "pool.ntp.org";
