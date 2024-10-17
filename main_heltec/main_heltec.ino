@@ -2,7 +2,7 @@
 #include "ThingSpeak.h"
 #include <ESP32Time.h> //RTC
 #include "Adafruit_INA219.h"
-#include <Adafruit_BME280.h>
+#include <DHTStable.h>
 #include <SPI.h>
 #include <SdFat.h>
 #include <SdFatConfig.h>
@@ -15,24 +15,30 @@
 #define SDCardInterval      10
 
 //Sensor related definitions
-#define CO_pin D0
-#define NO_pin D1
-#define SO_pin D2
+#define DHT22_PIN  6
+#define CO_pin  7
+#define NO_pin 5
+#define SO_pin 3
 
-//SPI related defines
-#define PIN_CS_OPC D7
-#define PIN_CS_SD D6
-//MOSI = D10
-//MISO = D9
-//SCK = D8
+//OPC related defines
+#define PIN_MISO_OPC 35
+#define PIN_MOSI_OPC 34
+#define PIN_SCK_OPC 36
+#define PIN_CS_OPC 33
+
+//SD card related definitions
+#define PIN_MISO_SD 45
+#define PIN_MOSI_SD 46
+#define PIN_SCK_SD 47
+#define PIN_CS_SD 26
 
 //Terminal printing and files related definitions
 #define terminalHeader  "timestamp,voltage (V),current (mA),humidity (%),temperature (°C),CO (ppb),NO2 (ppb),SO2 (ppb),PM1 (ug/m^3),PM2.5 (ug/m^3),PM10 (ug/m^3),WiFi,IoT"
 #define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi,IoT"
 
 //WiFi related variables
-const char* ssid = "LaboratorioDelta";
-const char* pass = "labdelta21!";
+ const char* ssid = "LaboratorioDelta";
+ const char* pass = "labdelta21!";
 //const char* ssid = "Juanjo";
 //const char* pass = "needuhuru";
 bool connected = false;
@@ -66,8 +72,8 @@ unsigned long prevEpochTS = 0;
 //INA219 related variables
 Adafruit_INA219 ina219;
 
-//BME280 related variables
-Adafruit_BME280 bme;
+//DHT related variables
+DHTStable dht;
 
 //Sensor related variables
 typedef struct sensorDataType {
@@ -126,7 +132,6 @@ void setup()
   timerAttachInterrupt(timer, &onTimer); //handler onTimer at the end of the program
   timerAlarm(timer, 1000000, true, 0); // repeat = true, unlimited cycles
   Serial.println("Timer configured");
-  
   //Iterval testing
   if((SDCardInterval % MeasureInterval) != 0){
     Serial.println("SD card saving interval is wrong");
@@ -136,27 +141,25 @@ void setup()
     Serial.println("ThingSpeak saving interval is wrong");
     testsFailed = true;
   }else Serial.println("ThingSpeak saving interval correct");
-
   //INA219 related setup
   if(!ina219.begin()){
     Serial.println("Could not find INA219");
     testsFailed = true;
   }else Serial.println("INA219 initialized");
-  
-  //BME280 related setup
-  if(!bme.begin(0x76))){
-    Serial.println("Could not find BME280");
+  //DHT related setup
+  if(dht.read22(DHT22_PIN) != 0){
+    Serial.println("Could not read from DHT22");
     testsFailed = true;
-  }else Serial.println("BME280 initialized");
-  
+  }else Serial.println("DHT22 initialized");
   //SD card related setup
-  SPI.begin();
+  SD_SPI.begin(PIN_SCK_SD, PIN_MISO_SD, PIN_MOSI_SD, PIN_CS_SD);
   // inicialize SD Card
   if(!SD.begin(SdSpiConfig(PIN_CS_SD, SHARED_SPI, SD_SCK_MHZ(50), &SD_SPI))){
     Serial.println("Could not find SD card");
     testsFailed = true;
   }else Serial.println("SD card initialized");
-  
+  //OPC related setup
+  SPI.begin(PIN_SCK_OPC, PIN_MISO_OPC, PIN_MOSI_OPC, PIN_CS_OPC);
   // initialize and turn on OPC
   StartOPC(PIN_CS_OPC);
   Serial.println("OPC initialized");
@@ -166,7 +169,6 @@ void setup()
     while(true);
   }
   delay(1000);
-  
   //NTP server related setup
   while(!syncTime());
   Serial.println("Time synchronization with NTC server succesful");
@@ -206,8 +208,8 @@ void loop()
     if(intervalEval(MeasureInterval,currEpoch,prevEpochMeas,&prevEpochMeas)){
       sensorData.voltage = ina219.getBusVoltage_V();
       sensorData.current = ina219.getCurrent_mA();
-      sensorData.humidity = bme.readHumidity();
-      sensorData.temperature = bme.readTemperature();
+      sensorData.humidity = dht.getHumidity();
+      sensorData.temperature = dht.getTemperature();
       sensorData.CO = gasSensor(CO_pin,285,420);
       sensorData.NO = gasSensor(NO_pin,250,800);
       sensorData.SO = gasSensor(SO_pin,350,500);
@@ -221,7 +223,6 @@ void loop()
     if(intervalEval(SDCardInterval,currEpoch,prevEpochSD,&prevEpochSD)){
       averaging(&sensorDataAcumSD,&sensorDataAvgSD,sizeofData,SDCardInterval,MeasureInterval);
       sensorDataAcumSD = emptyData();
-      digitalWrite(PIN_CS_SD, LOW);
       if (!myFile.open(filename.c_str(), O_RDWR | O_CREAT | O_AT_END)) {
         Serial.print("SD Card: error on opening file ");
         Serial.println(filename);
