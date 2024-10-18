@@ -110,14 +110,17 @@ int yesterday = 0;
 
 bool testsFailed = false;
 
+int wifi_counter = 0;
+
 void setup()
 {
   Serial.begin(115200);
   Serial.println("Setup start");
   WiFi.mode(WIFI_STA); 
   WiFi.begin(ssid, pass);
-  while (WiFi.status() != WL_CONNECTED) {
+  while ((WiFi.status() != WL_CONNECTED) && (wifi_counter > 10) ) {
     delay(1000);
+    wifi_counter++;
     Serial.println("Internet not connected");
   }
   connected = true;
