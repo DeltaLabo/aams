@@ -31,10 +31,12 @@
 #define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi,IoT"
 
 //WiFi related variables
-const char* ssid = "LaboratorioDelta";
-const char* pass = "labdelta21!";
+// const char* ssid = "LaboratorioDelta";
+// const char* pass = "labdelta21!";
 //const char* ssid = "Juanjo";
 //const char* pass = "needuhuru";
+const char* ssid = "Nodos Visitas";   // your network SSID (name)
+const char* pass = "uneduned";        // your network password
 bool connected = false;
 WiFiClient  client;
 
