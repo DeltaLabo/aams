@@ -37,10 +37,8 @@
 #define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi,IoT"
 
 //WiFi related variables
- const char* ssid = "LaboratorioDelta";
- const char* pass = "labdelta21!";
-//const char* ssid = "Juanjo";
-//const char* pass = "needuhuru";
+const char* ssid = "Nodos Visitas";   // your network SSID (name)
+const char* pass = "uneduned";        // your network password
 bool connected = false;
 WiFiClient  client;
 
@@ -114,14 +112,17 @@ int yesterday = 0;
 
 bool testsFailed = false;
 
+int wifi_counter = 0;
+
 void setup()
 {
   Serial.begin(115200);
   Serial.println("Setup start");
   WiFi.mode(WIFI_STA); 
   WiFi.begin(ssid, pass);
-  while (WiFi.status() != WL_CONNECTED) {
+  while ((WiFi.status() != WL_CONNECTED) && (wifi_counter > 10) ) {
     delay(1000);
+    wifi_counter++;
     Serial.println("Internet not connected");
   }
   connected = true;
