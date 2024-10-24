@@ -37,8 +37,14 @@
 #define fileHeader  "timestamp,voltage,current,humidity,temperature,CO,NO2,SO2,PM1,PM2.5,PM10,WiFi,IoT"
 
 //WiFi related variables
-const char* ssid = "Nodos Visitas";   // your network SSID (name)
-const char* pass = "uneduned";        // your network password
+const char* ssid1 = "Orientacion&Evaluacion";   // your network SSID (name)
+const char* pass1 = "12422890";        // your network password
+const char* ssid2 = "Nodos Visitas";   // your network SSID (name)
+const char* pass2 = "uneduned";        // your network password
+const char* ssid3 = "Colegio";   // your network SSID (name)
+const char* pass3 = "Col3gio_24";        // your network password
+const char* ssid4 = "Maynor Rojas";   // your network SSID (name)
+const char* pass4 = "264575131";        // your network password
 bool connected = false;
 WiFiClient  client;
 
@@ -119,14 +125,7 @@ void setup()
   Serial.begin(115200);
   Serial.println("Setup start");
   WiFi.mode(WIFI_STA); 
-  WiFi.begin(ssid, pass);
-  while ((WiFi.status() != WL_CONNECTED) && (wifi_counter > 10) ) {
-    delay(1000);
-    wifi_counter++;
-    Serial.println("Internet not connected");
-  }
-  connected = true;
-  Serial.println("Internet connected");
+  WiFi_conn();
   ThingSpeak.begin(client);
   //Interruption related setup
   timer = timerBegin(1000000); //1e6 us
@@ -197,13 +196,7 @@ void loop()
     }
     // Check internet every "InternetInterval"
     if(intervalEval(InternetInterval,currEpoch,prevEpochInter,&prevEpochInter)){
-      if(WiFi.status() != WL_CONNECTED){
-        connected = false;
-      }else{
-        connected = true;
-        syncTime();
-        rtc.setTimeStruct(timeinfo);
-      }
+      WiFi_conn();
     }
     // Make measurements every "MeasureInterval"
     if(intervalEval(MeasureInterval,currEpoch,prevEpochMeas,&prevEpochMeas)){
@@ -264,6 +257,43 @@ bool syncTime() {
     return false;
   }
   return true;
+}
+
+void WiFi_conn() {
+  if (WiFi.status() != WL_CONNECTED){
+    WiFi.begin(ssid1, pass1);
+    delay(60000);
+  } 
+  if (WiFi.status() != WL_CONNECTED){
+    Serial.print("Could not connecto to: ");
+    Serial.println(ssid1);
+    WiFi.begin(ssid2, pass2);
+    delay(60000);
+  }
+  if (WiFi.status() != WL_CONNECTED){
+    Serial.print("Could not connecto to: ");
+    Serial.println(ssid2);
+    WiFi.begin(ssid3, pass3);
+    delay(60000);
+  }
+  if (WiFi.status() != WL_CONNECTED){
+    Serial.print("Could not connecto to: ");
+    Serial.println(ssid3);
+    WiFi.begin(ssid4, pass4);
+    delay(60000);
+  } 
+  if (WiFi.status() != WL_CONNECTED){
+    Serial.print("Could not connecto to: ");
+    Serial.println(ssid4);
+    while((WiFi.status() != WL_CONNECTED)){
+      delay(60000);
+      Serial.println("Internet not connected");
+    }
+  }
+  connected = true;
+  while(!syncTime());
+  rtc.setTimeStruct(timeinfo);
+  Serial.println("Internet connected and time synced");
 }
 
 //Time interruption handler
