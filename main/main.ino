@@ -149,7 +149,7 @@ void setup()
   }else Serial.println("INA219 initialized");
   
   //BME280 related setup
-  if(!bme.begin(0x76))){
+  if(!bme.begin(0x76)){
     Serial.println("Could not find BME280");
     testsFailed = true;
   }else Serial.println("BME280 initialized");
