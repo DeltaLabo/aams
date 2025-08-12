@@ -14,8 +14,11 @@ Ambient air monitoring system
 
 ### Microcontroller info
 
-* Model: Heltec ESP32 WiFi LoRa 32(V3)
+* Model for Version 1: Heltec ESP32 WiFi LoRa 32(V3)
 * [Documentation page](https://heltec.org/project/wifi-lora-32-v3/)
+
+* Model for Version 2: XIAO ESP32C3
+* [Documentation page](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/)
 
 ### Sensors info
 
